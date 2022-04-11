@@ -4,6 +4,10 @@ use mysql::*;
 use serde::Serialize;
 use std::collections::HashMap;
 
+use chrono;
+use chrono::prelude::*;
+use chrono::Duration;
+
 #[derive(Debug)]
 pub struct Insertbuoy {
     pub buoy: Buoy,
@@ -14,6 +18,7 @@ pub struct Insertbuoy {
 pub struct Modelinfo {
     pub model: String,
     pub group_id: i32,
+    pub line: i32,
     pub latitude: f32,
     pub longitude: f32,
 }
@@ -29,16 +34,17 @@ pub struct GroupAvg {
     group_weight: f32,
 }
 
-pub fn insert(data: &Vec<Buoy>) -> HashMap<String, i32> {
+pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
     let mut db = DataBase::init();
 
     let row = db
         .conn
         .query_map(
-            "SELECT model, group_id, latitude, longitude FROM buoy_model ORDER BY model_idx",
-            |(model, group_id, latitude, longitude)| Modelinfo {
+            "SELECT model, group_id, line, latitude, longitude FROM buoy_model ORDER BY model_idx",
+            |(model, group_id, line, latitude, longitude)| Modelinfo {
                 model,
                 group_id,
+                line,
                 latitude,
                 longitude,
             },
@@ -77,7 +83,7 @@ pub fn insert(data: &Vec<Buoy>) -> HashMap<String, i32> {
     hashmap
 }
 
-pub fn update_buoy(mut db: DataBase, data: &Vec<Buoy>) {
+pub fn update_buoy(mut db: DataBase, data: &[Buoy]) {
     let stmt = db
         .conn
         .prep(
@@ -115,7 +121,7 @@ pub fn update_buoy(mut db: DataBase, data: &Vec<Buoy>) {
 }
 
 pub fn update_group_avg(mut db: DataBase) {
-    let row = db
+    let _row = db
         .conn
         .query_map(
             "SELECT group_id, 
@@ -146,4 +152,83 @@ pub fn update_group_avg(mut db: DataBase) {
         )
         .expect("error!");
 
+    let update_stmt = db
+        .conn
+        .prep(
+            r"UPDATE buoy_group
+                        SET                 
+                            group_latitude   = :group_latitude,
+                            group_longitude  = :group_longitude,
+                            group_water_temp = :group_water_temp,
+                            group_salinity   = :group_salinity,
+                            group_height     = :group_height,
+                            group_weight     = :group_weight
+                        WHERE
+                            group_id = :group_id",
+        )
+        .expect("Error on STMT");
+
+    db.conn
+        .exec_batch(
+            update_stmt,
+            _row.iter().map(|group| {
+                params! {
+                    "group_latitude" => group.group_latitude,
+                    "group_longitude" => group.group_longitude,
+                    "group_water_temp" => group.group_water_temp,
+                    "group_salinity" => group.group_salinity,
+                    "group_height" => group.group_height,
+                    "group_weight" => group.group_weight,
+                    "group_id" => group.group_id,
+                }
+            }),
+        )
+        .expect("Error!!");
+}
+
+//전날의 평균을 계산하기위해 하루치의 데이터들을 가져옵니다.
+pub fn get_daily_data() -> Vec<Insertbuoy> {
+    let now: DateTime<Local> = Local::now();
+
+    let start_date = (now.date() - Duration::days(1)).to_string();
+    let end_date = now.to_string();
+
+    let mut db = DataBase::init();
+
+    let query = r"
+        SELECT group_id, model, CAST(time AS CHAR) as time, latitude, longitude, water_temp, salinity, height, weight FROM buoy_data 
+            WHERE 
+        buoy_data.time >= :start_date AND
+        buoy_data.time <= :end_date;
+    ";
+
+    let stmt = db.conn.prep(query).expect("stmt error");
+
+    let row = db
+        .conn
+        .exec_map(
+            stmt,
+            params! {
+                "start_date" => &start_date[0..10],
+                "end_date" => &end_date[0..10]
+            },
+            |(group_id, model, time, latitude, longitude, water_temp, salinity, height, weight)| {
+                Insertbuoy {
+                    buoy: Buoy {
+                        time,
+                        model,
+                        lat: latitude,
+                        lon: longitude,
+                        w_temp: water_temp,
+                        salinity,
+                        height,
+                        weight,
+                    },
+                    group_id,
+                }
+            },
+        )
+        .expect("error");
+
+    row
 }

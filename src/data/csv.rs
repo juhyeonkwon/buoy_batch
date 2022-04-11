@@ -11,8 +11,8 @@ use std::fs::File;
 pub struct Insertbuoy {
     pub time: String,
     pub model: String,
-    pub lat: f32,
-    pub lon: f32,
+    pub lat: f64,
+    pub lon: f64,
     pub w_temp: f32,
     pub salinity: f32,
     pub height: f32,
@@ -20,7 +20,7 @@ pub struct Insertbuoy {
     pub group_id: i32,
 }
 
-pub fn write_csv(data: &Vec<Buoy>, hashmap: HashMap<String, i32>) {
+pub fn write_csv(data: &[Buoy], hashmap: HashMap<String, i32>) {
     //현재시간에서 한시간 뺀거
     let now: DateTime<Local> = Local::now() - Duration::hours(1);
 

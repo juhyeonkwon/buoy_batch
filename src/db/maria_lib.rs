@@ -15,8 +15,8 @@ pub struct Test {
 pub struct Buoy {
     pub time: String,
     pub model: String,
-    pub lat: f32,
-    pub lon: f32,
+    pub lat: f64,
+    pub lon: f64,
     pub w_temp: f32,
     pub salinity: f32,
     pub height: f32,

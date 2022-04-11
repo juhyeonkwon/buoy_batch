@@ -186,5 +186,38 @@ mod tests {
             .expect("error!");
 
         println!("{:#?}", row);
+
+        let update_stmt = db
+            .conn
+            .prep(
+                r"UPDATE buoy_group
+                        SET                 
+                            group_latitude   = :group_latitude,
+                            group_longitude  = :group_longitude,
+                            group_water_temp = :group_water_temp,
+                            group_salinity   = :group_salinity,
+                            group_height     = :group_height,
+                            group_weight     = :group_weight
+                        WHERE
+                            group_id = :group_id",
+            )
+            .expect("Error on STMT");
+
+        db.conn
+            .exec_batch(
+                update_stmt,
+                row.iter().map(|group| {
+                    params! {
+                        "group_latitude" => group.group_latitude,
+                        "group_longitude" => group.group_longitude,
+                        "group_water_temp" => group.group_water_temp,
+                        "group_salinity" => group.group_salinity,
+                        "group_height" => group.group_height,
+                        "group_weight" => group.group_weight,
+                        "group_id" => group.group_id,
+                    }
+                }),
+            )
+            .expect("Error!!");
     }
 }
