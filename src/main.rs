@@ -2,6 +2,7 @@ mod data;
 mod db;
 mod task;
 mod test;
+mod request;
 
 use dotenv::dotenv;
 // use std::collections::HashMap;

@@ -32,6 +32,17 @@ mod tests {
         println!("{:?}", ab);
     }
 
+    #[test]
+    fn get_time2() {
+        let now: DateTime<Local> = Local::now();
+
+        let now_str = now.to_string();
+
+        let ab = format!("{}{}{}", &now_str[0..4], &now_str[5..7], &now_str[8..10]);
+
+        println!("{:?}", ab);
+    }
+
     #[derive(Serialize, Debug)]
     pub struct Modelinfo {
         pub model: String,
