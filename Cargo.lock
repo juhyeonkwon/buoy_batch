@@ -167,9 +167,9 @@ name = "buoy_batch"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "cronjob",
  "csv",
  "dotenv",
+ "job_scheduler",
  "mysql",
  "rand",
  "redis",
@@ -298,16 +298,6 @@ dependencies = [
  "chrono",
  "error-chain",
  "nom 4.1.1",
-]
-
-[[package]]
-name = "cronjob"
-version = "0.3.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b2eb716ef679d11dcb7ca007e8a82b7c9312233ede0878fe9eaa4d2bc902910"
-dependencies = [
- "chrono",
- "cron",
 ]
 
 [[package]]
@@ -833,6 +823,17 @@ name = "itoa"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aab8fc367588b89dcee83ab0fd66b72b50b72fa1904d7095045ace2b0c81c35"
+
+[[package]]
+name = "job_scheduler"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51f368c9c76dde2282714ae32dc274b79c27527a0c06c816f6dda048904d0d7c"
+dependencies = [
+ "chrono",
+ "cron",
+ "uuid",
+]
 
 [[package]]
 name = "js-sys"
@@ -1889,6 +1890,9 @@ name = "uuid"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+dependencies = [
+ "getrandom",
+]
 
 [[package]]
 name = "vcpkg"

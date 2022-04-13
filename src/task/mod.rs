@@ -39,3 +39,15 @@ pub fn avg_task(name: &str) {
     super::data::redis::set_avg_data(proceed_data);
     println!("redis 저장 완료.");
 }
+
+//기상, 해양값을 가져오는 크론 잡 정의
+pub fn obs_task(name: &str) {
+    let now: DateTime<Local> = Local::now();
+
+    let now_str = now.to_string();
+    println!("{} 작업 실행 : {}", name, now_str);
+
+    super::request::requests::set_data("tongyeong");
+    super::request::requests::set_data("geojedo");
+    println!("기상, 해양 메인정보 저장 완료.");
+}
