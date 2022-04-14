@@ -6,7 +6,7 @@ mod test;
 
 use dotenv::dotenv;
 extern crate job_scheduler;
-use job_scheduler::{JobScheduler, Job};
+use job_scheduler::{Job, JobScheduler};
 use std::time::Duration;
 
 use std::thread;
@@ -25,7 +25,7 @@ fn main() {
 
         loop {
             sched.tick();
-    
+
             std::thread::sleep(Duration::from_millis(500));
         }
     });
@@ -42,29 +42,45 @@ fn main() {
 
         loop {
             sched.tick();
-    
+
             std::thread::sleep(Duration::from_millis(500));
         }
     });
 
     let main_data_thread = thread::spawn(|| {
-        println!("CronJob 3 : 메인데이터 저장 실행");
+        println!("CronJob 3 : 메인데이터(관측, 파고) 저장 실행");
 
         let mut sched = JobScheduler::new();
 
-        sched.add(Job::new("0 0,10,20,30,40,50 * * * *".parse().unwrap(), || {
-            task::obs_task("MainDataBatch");
+        sched.add(Job::new("0 0,15,30,45 * * * *".parse().unwrap(), || {
+            task::obs_all_task("Main 데이터 저장(obs, wave)");
         }));
 
         loop {
             sched.tick();
-    
+
             std::thread::sleep(Duration::from_millis(500));
         }
+    });
 
+    let main_tidal_thread = thread::spawn(|| {
+        println!("CronJob 4 : 메인데이터(조류 데이터) 저장 실행");
+
+        let mut sched = JobScheduler::new();
+
+        sched.add(Job::new("0 0,30 * * * *".parse().unwrap(), || {
+            task::obs_all_task("Main 데이터 저장(조류)");
+        }));
+
+        loop {
+            sched.tick();
+
+            std::thread::sleep(Duration::from_millis(500));
+        }
     });
 
     rdbms_thread.join().unwrap();
     avg_thread.join().unwrap();
     main_data_thread.join().unwrap();
+    main_tidal_thread.join().unwrap();
 }

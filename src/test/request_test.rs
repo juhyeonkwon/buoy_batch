@@ -80,4 +80,35 @@ mod tests {
         requests::set_data("geojedo");
         requests::set_data("tongyeong");
     }
+
+    use crate::request::requests::set_all_obs_data;
+    use crate::request::requests::set_all_tidal_data;
+    use crate::request::requests::set_all_wave_height_data;
+
+    #[test]
+    fn set_all_data_test() {
+        dotenv().ok();
+        set_all_obs_data();
+    }
+
+    #[test]
+    fn set_all_wave_height_data_test() {
+        dotenv().ok();
+        set_all_wave_height_data();
+    }
+
+    #[test]
+    fn set_all_tidal_data_test() {
+        dotenv().ok();
+        set_all_tidal_data();
+    }
+
+    use crate::request::model::tidal_current::TidalRaderNowResp;
+
+    #[test]
+    fn tidal_sibal_test() {
+        let key = "HefXKhyZpMNUAxmmMcpUg==";
+
+        let val: Value = TidalRaderNowResp::get_data(key, "HF_0064").expect("error!");
+    }
 }

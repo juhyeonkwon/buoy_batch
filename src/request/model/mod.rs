@@ -1,5 +1,6 @@
 use chrono;
 use chrono::prelude::*;
+use chrono::Duration;
 
 pub mod obs_recent;
 pub mod obs_wave_hight;
@@ -33,5 +34,18 @@ pub trait RequestLib {
         let now_str = now.to_string();
 
         format!("{}{}{}", &now_str[0..4], &now_str[5..7], &now_str[8..10])
+    }
+
+    fn get_today_with_time() -> String {
+        let now: DateTime<Local> = Local::now() - Duration::hours(1);
+        let now_str = now.to_string();
+
+        format!(
+            "{}{}{}{}",
+            &now_str[0..4],
+            &now_str[5..7],
+            &now_str[8..10],
+            &now_str[11..13]
+        )
     }
 }

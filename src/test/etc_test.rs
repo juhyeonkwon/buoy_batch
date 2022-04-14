@@ -28,8 +28,15 @@ mod tests {
         let now_str = now.to_string();
 
         let ab = format!("{}_{}", &now_str[0..10], &now_str[11..13]);
+        let cd = format!(
+            "{}{}{}{}",
+            &now_str[0..4],
+            &now_str[5..7],
+            &now_str[8..10],
+            &now_str[11..13]
+        );
 
-        println!("{:?}", ab);
+        println!("{:?} 22", cd);
     }
 
     #[test]

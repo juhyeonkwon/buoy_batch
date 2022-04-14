@@ -179,4 +179,30 @@ mod tests {
             }
         }
     }
+
+    #[derive(Debug)]
+    struct Obs {
+        number: String,
+        name: String,
+    }
+
+    use crate::request::model::obs_recent::ObsRecentResp;
+
+    #[test]
+    fn db_test2() {
+        dotenv().ok();
+
+        let mut db = db::maria_lib::DataBase::init();
+
+        let data : Vec<Obs> = db.conn
+            .query_map("SELECT number, name FROM observation_list WHERE tide_level = 1 AND w_temperature = 1 AND salinity = 1 AND air_temperature = 1", |(number, name)| Obs { number, name })
+            .expect("query Error occured");
+
+        let key = "HefXKhyZpMNUAxmmMcpUg==";
+
+        for val in data.iter() {
+            let temp = ObsRecentResp::get_data(key, &val.number).expect("error!");
+            println!("{:#?}", temp);
+        }
+    }
 }

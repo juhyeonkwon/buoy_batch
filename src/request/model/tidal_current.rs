@@ -74,3 +74,109 @@ impl TidalCurrentResp {
 }
 
 impl RequestLib for TidalCurrentResp {}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TidalObsNowData {
+    pub obs_time: String,
+    pub current_direct: String,
+    pub current_speed: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TidalObsNowMeta {
+    pub obs_post_id: String,
+    pub obs_post_name: String,
+    pub obs_last_req_cnt: String,
+    pub obs_lat: String,
+    pub obs_lon: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TidalObsNowResult {
+    pub data: Vec<TidalObsNowData>,
+    pub meta: TidalObsNowMeta,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TidalObsNowResp {
+    pub result: TidalObsNowResult,
+}
+
+impl TidalObsNowResp {
+    pub fn get_data(key: &str, location: &str) -> Result<Value, Box<dyn std::error::Error>> {
+        //tidalBu 조류관측소
+        //tidalHfRadar 해수유동 관측소 (HF로 시작)
+
+        let date = TidalObsNowResp::get_today();
+
+        let mut url: String = TidalObsNowResp::set_url_with_date("tidalBu", key, location, &date);
+
+        let resp = reqwest::blocking::get(url)?.text()?;
+
+        let value: Value = serde_json::from_str(&resp).expect("json parse error!");
+
+        Ok(value)
+    }
+
+    pub fn get_last_data(value: &TidalObsNowResp) -> Value {
+        let val = serde_json::to_value(&value.result.data[value.result.data.len() - 1])
+            .expect("parse Error!");
+
+        val
+    }
+}
+
+impl RequestLib for TidalObsNowResp {}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TidalRaderNowData {
+    pub lat: String,
+    pub lon: String,
+    pub current_direct: String,
+    pub current_speed: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TidalRaderNowMeta {
+    pub obs_post_id: String,
+    pub obs_post_name: String,
+    pub obs_last_req_cnt: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TidalRaderNowResult {
+    pub data: Vec<TidalRaderNowData>,
+    pub meta: TidalRaderNowMeta,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TidalRaderNowResp {
+    pub result: TidalRaderNowResult,
+}
+
+impl TidalRaderNowResp {
+    pub fn get_data(key: &str, location: &str) -> Result<Value, Box<dyn std::error::Error>> {
+        //tidalBu 조류관측소
+        //tidalHfRadar 해수유동 관측소 (HF로 시작)
+
+        let date = TidalRaderNowResp::get_today_with_time();
+
+        let url: String =
+            TidalRaderNowResp::set_url_with_date("tidalHfRadar", key, location, &date);
+
+        let resp = reqwest::blocking::get(url)?.text()?;
+
+        let value: Value = serde_json::from_str(&resp).expect("json parse error!");
+
+        Ok(value)
+    }
+
+    pub fn get_last_data(value: &TidalRaderNowResp) -> Value {
+        let val = serde_json::to_value(&value.result.data[value.result.data.len() - 1])
+            .expect("parse Error!");
+
+        val
+    }
+}
+
+impl RequestLib for TidalRaderNowResp {}

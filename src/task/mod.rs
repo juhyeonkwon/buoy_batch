@@ -51,3 +51,24 @@ pub fn obs_task(name: &str) {
     super::request::requests::set_data("geojedo");
     println!("기상, 해양 메인정보 저장 완료.");
 }
+
+//기상, 해양값 15분 간격
+pub fn obs_all_task(name: &str) {
+    let now: DateTime<Local> = Local::now();
+
+    let now_str = now.to_string();
+    println!("{} 작업 실행 : {}", name, now_str);
+
+    super::request::requests::set_all_obs_data();
+    super::request::requests::set_all_wave_height_data();
+}
+
+//조류의 유속 등 30분 간격
+pub fn tidal_all_task(name: &str) {
+    let now: DateTime<Local> = Local::now();
+
+    let now_str = now.to_string();
+    println!("{} 작업 실행 : {}", name, now_str);
+
+    super::request::requests::set_all_tidal_data();
+}
