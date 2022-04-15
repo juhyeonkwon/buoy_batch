@@ -37,13 +37,13 @@ mod tests {
 
         let location = "DT_0029";
 
-        let data = ObsRecentResp::get_data(key, location).expect("error!");
+        let _data = ObsRecentResp::get_data(key, location).expect("error!");
         let data2 = ObsWaveHightResp::get_data(key, "KG_0025").expect("error!");
         let data3 = TidalCurrentResp::get_data(key, "16LTC09").expect("error!");
 
         let sib: ObsWaveHightResp = serde_json::from_value(data2).expect("Error!");
 
-        let js = serde_json::to_value(&sib.result.data[sib.result.data.len() - 1])
+        let _js = serde_json::to_value(&sib.result.data[sib.result.data.len() - 1])
             .expect("parse Error!");
 
         // println!("{:#?}", data);
@@ -51,7 +51,7 @@ mod tests {
         // println!("{:#?}", data3);
 
         let tidal: TidalCurrentResp = serde_json::from_value(data3).expect("Error!");
-        let val: Value = tidal.get_close_data();
+        let _val: Value = tidal.get_close_data();
 
         Ok(())
     }
@@ -106,9 +106,10 @@ mod tests {
     use crate::request::model::tidal_current::TidalRaderNowResp;
 
     #[test]
-    fn tidal_sibal_test() {
+    fn tidal_test() {
         let key = "HefXKhyZpMNUAxmmMcpUg==";
 
-        let val: Value = TidalRaderNowResp::get_data(key, "HF_0064").expect("error!");
-    }
+        let _val: Value = TidalRaderNowResp::get_data(key, "HF_0064").expect("error!");
+    }      
+    
 }

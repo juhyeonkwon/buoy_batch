@@ -27,7 +27,6 @@ mod tests {
 
         let now_str = now.to_string();
 
-        let ab = format!("{}_{}", &now_str[0..10], &now_str[11..13]);
         let cd = format!(
             "{}{}{}{}",
             &now_str[0..4],
@@ -238,4 +237,13 @@ mod tests {
             )
             .expect("Error!!");
     }
+
+
+    use crate::task::avg_task;
+    #[test] 
+    fn avg_task_test() {
+        dotenv().ok();
+        avg_task("test_avg");
+    }
+
 }
