@@ -1,7 +1,8 @@
 use crate::db::maria_lib::{Buoy, DataBase};
 use mysql::prelude::*;
 use mysql::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 
 use chrono;
@@ -83,6 +84,7 @@ pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
     hashmap
 }
 
+//buoy의 각 값들을 최신값으로 업데이트 합니다.
 pub fn update_buoy(mut db: DataBase, data: &[Buoy]) {
     let stmt = db
         .conn
@@ -120,6 +122,7 @@ pub fn update_buoy(mut db: DataBase, data: &[Buoy]) {
     update_group_avg(db);
 }
 
+//각 최신값들을 토대로 그룹들의 현재 평균값을 저장합니다.
 pub fn update_group_avg(mut db: DataBase) {
     let _row = db
         .conn
@@ -231,4 +234,136 @@ pub fn get_daily_data() -> Vec<Insertbuoy> {
         .expect("error");
 
     row
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Group {
+    pub group_id: String,
+    pub group_name: String,
+    pub group_latitude: f64,
+    pub group_longitude: f64,
+    pub group_water_temp: f64,
+    pub group_salinity: f64,
+    pub group_height: f64,
+    pub group_weight: f64,
+}
+
+pub fn get_group_avg() -> Vec<Group> {
+    let mut db = DataBase::init();
+
+    let data: Vec<Group> = db
+        .conn
+        .query_map(
+            "SELECT group_id,
+            group_name,
+            group_latitude,
+            group_longitude,
+            group_water_temp,
+            group_salinity,
+            group_height,
+            group_weight FROM buoy_group",
+            |(
+                group_id,
+                group_name,
+                group_latitude,
+                group_longitude,
+                group_water_temp,
+                group_salinity,
+                group_height,
+                group_weight,
+            )| Group {
+                group_id,
+                group_name,
+                group_latitude,
+                group_longitude,
+                group_water_temp,
+                group_salinity,
+                group_height,
+                group_weight,
+            },
+        )
+        .expect("query Error occured");
+
+    data
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Line {
+    pub group_id: i16,
+    pub group_name: String,
+    pub line: i16,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub water_temp: f64,
+    pub salinity: f64,
+    pub height: f64,
+    pub weight: f64,
+}
+
+pub struct List {
+    pub group_id: i16,
+    pub group_name: String,
+}
+
+pub fn get_line_avg(row : &Vec<List>, db : &mut DataBase) -> Value {
+
+    let stmt = db
+        .conn
+        .prep(
+            "SELECT b.group_id, b.group_name, 
+                line,
+                AVG(latitude) as latitude,
+                AVG(longitude) as longitude,
+                AVG(water_temp) as water_temp,
+                AVG(salinity) as salinity,
+                AVG(height) as height,
+                AVG(weight) as weight
+            FROM
+                buoy_model a
+            INNER JOIN
+                buoy_group b ON a.group_id = b.group_id
+            WHERE
+                group_name = :name GROUP BY a.line",
+        )
+        .expect("Error");
+
+    let mut json : Value = json!({});
+
+    
+    for value in row.iter() {
+        let data: Vec<Line> = db
+        .conn
+        .exec_map(
+            &stmt, params!{
+                "name" => &value.group_name
+            },
+            |(
+                group_id,
+                group_name,
+                line,
+                latitude,
+                longitude,
+                water_temp,
+                salinity,
+                height,
+                weight,
+            )| Line {
+                group_id,
+                group_name,
+                line,
+                latitude,
+                longitude,
+                water_temp,
+                salinity,
+                height,
+                weight,
+            },
+        )
+        .expect("query Error occured");
+
+        json[&value.group_name] = json!(data);
+
+    }
+
+    json
 }

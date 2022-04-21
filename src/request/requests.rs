@@ -119,9 +119,8 @@ pub fn set_all_obs_data() {
     let key = "HefXKhyZpMNUAxmmMcpUg==";
 
     for val in data.iter() {
-        println!("doing {}", val.number);
 
-        let recent = ObsRecentResp::get_data(key, &val.number).expect("error!");
+        let recent = ObsRecentResp::get_data(key, &val.number).expect("get Data error!");
         let recent_struct: ObsRecentResp = serde_json::from_value(recent).expect("Error!");
         let recent_val: String = serde_json::to_string(&recent_struct.result.data).expect("Error!");
 
@@ -153,11 +152,15 @@ pub fn set_all_wave_height_data() {
     let key = "HefXKhyZpMNUAxmmMcpUg==";
 
     for val in data.iter() {
-        println!("doing {}", val.number);
 
         let wave_hight = ObsWaveHightResp::get_data(&key, &val.number).expect("error!");
-        let wave_hight_struct: ObsWaveHightResp =
-            serde_json::from_value(wave_hight).expect("Error!");
+        let wave_hight_struct: ObsWaveHightResp = match serde_json::from_value(wave_hight) {
+            Ok(v) => v,
+            Err(_) => {
+                println!("{}의 파도, 파고 데이터 존재하지 않습니다.", val.number);
+                continue;
+            }
+        };
 
         let wave_hight_val = serde_json::to_string(
             &wave_hight_struct.result.data[wave_hight_struct.result.data.len() - 1],
@@ -202,15 +205,19 @@ pub fn set_all_tidal_data() {
     let key = "HefXKhyZpMNUAxmmMcpUg==";
 
     for val in data.iter() {
-        println!("doing {}", val.number);
         let mut tidal: Value;
         let mut tidal_val: String = String::from("");
 
         if val.tide_velocity == 1 {
             tidal = TidalObsNowResp::get_data(&key, &val.number).expect("데이터 가져오기 error!");
             // println!("{:#?}", tidal);
-            let tidal_struct: TidalObsNowResp =
-                serde_json::from_value(tidal).expect("데이터 파싱 에러!! error!");
+            let tidal_struct: TidalObsNowResp = match serde_json::from_value(tidal) {
+                Ok(v) => v,
+                Err(_) => {
+                    println!("data not exsist in {}", val.number);
+                    continue;
+                }
+            };
 
             tidal_val = serde_json::to_string(
                 &tidal_struct.result.data[tidal_struct.result.data.len() - 1],
@@ -221,7 +228,7 @@ pub fn set_all_tidal_data() {
             let tidal_struct: TidalRaderNowResp = match serde_json::from_value(tidal) {
                 Ok(v) => v,
                 Err(e) => {
-                    println!("{:#?}, 데이터가 아직 존재하지 않음", e);
+                    println!("{:#?}, {} 조류 데이터가 아직 존재하지 않습니다.", e, val.number);
                     continue;
                 }
             };

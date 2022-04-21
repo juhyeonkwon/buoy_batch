@@ -110,6 +110,5 @@ mod tests {
         let key = "HefXKhyZpMNUAxmmMcpUg==";
 
         let _val: Value = TidalRaderNowResp::get_data(key, "HF_0064").expect("error!");
-    }      
-    
+    }
 }

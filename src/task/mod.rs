@@ -1,4 +1,7 @@
 use chrono::prelude::*;
+use crate::db::maria_lib::DataBase;
+use mysql::prelude::*;
+use mysql::*;
 
 //rdbms task
 pub fn task(name: &str) {
@@ -20,7 +23,7 @@ pub fn task(name: &str) {
     println!("csv저장 완료");
 }
 
-//avg_batch
+//avg_batch 각 스마트 부표별 하루치 평균을 저장
 pub fn avg_task(name: &str) {
     let now: DateTime<Local> = Local::now();
 
@@ -37,8 +40,60 @@ pub fn avg_task(name: &str) {
 
     //데이터들을 redis에 저장합니다.
     super::data::redis::set_avg_data(proceed_data);
+
     println!("redis 저장 완료.");
 }
+
+//그룹 평균
+pub fn group_avg_task(name: &str) {
+    let now: DateTime<Local> = Local::now();
+
+    let now_str = now.to_string();
+    println!("{} 작업 실행 : {}", name, now_str);
+
+    let _avg_data = super::data::maria::get_group_avg();
+    println!("그룹 평균 데이터 불러오기 완료.");
+
+    super::data::redis::set_group_avg_data(_avg_data);
+    println!("그룹데이터 평균 redis 저장 완료.");
+}
+
+
+
+use crate::data::maria::List;
+
+pub fn get_line_avg_task(name: &str) {
+
+    let now: DateTime<Local> = Local::now();
+
+    let now_str = now.to_string();
+    println!("{} 작업 실행 : {}", name, now_str);
+
+
+    let mut db = DataBase::init();
+
+    let query = r"SELECT group_id, group_name FROM buoy_group";
+
+    //그룹 리스트 불러옴
+    let row: Vec<List> = db
+        .conn
+        .query_map(query, |(group_id, group_name)| List {
+            group_id,
+            group_name,
+        })
+        .expect("select Error");
+
+    
+    //그룹별 라인 평균값 가져옴
+    let mut data : serde_json::Value = super::data::maria::get_line_avg(&row, &mut db);
+    println!("그룹 라인별 평균 데이터 불러오기 완료.");
+
+
+    super::data::redis::set_group_line_avg_data(&mut data, &row);    
+    println!("그룹 라인별 평균 데이터 저장 완료.");
+
+}
+
 
 //기상, 해양값을 가져오는 크론 잡 정의
 pub fn obs_task(name: &str) {

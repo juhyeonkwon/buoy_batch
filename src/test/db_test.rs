@@ -205,4 +205,190 @@ mod tests {
             println!("{:#?}", temp);
         }
     }
+
+    #[derive(Debug)]
+    struct Group {
+        group_id: String,
+        group_name: String,
+        group_latitude: f64,
+        group_longitude: f64,
+        group_water_temp: f64,
+        group_salinity: f64,
+        group_height: f64,
+        group_weight: f64,
+        plain_buoy : i16
+    }
+
+    #[test]
+    fn group_avg() {
+        dotenv().ok();
+
+        let mut db = db::maria_lib::DataBase::init();
+        let now: DateTime<Local> = Local::now();
+        let now_str = now.to_string();
+
+        let data: Vec<Group> = db
+            .conn
+            .query_map(
+                "SELECT * FROM buoy_group",
+                |(
+                    group_id,
+                    group_name,
+                    group_latitude,
+                    group_longitude,
+                    group_water_temp,
+                    group_salinity,
+                    group_height,
+                    group_weight,
+                    plain_buoy,
+                )| Group {
+                    group_id,
+                    group_name,
+                    group_latitude,
+                    group_longitude,
+                    group_water_temp,
+                    group_salinity,
+                    group_height,
+                    group_weight,
+                    plain_buoy,
+                },
+            )
+            .expect("query Error occured");
+
+        println!("{:#?}, {}", data, &now_str[0..10]);
+    }
+
+
+    #[derive(Debug)]
+    struct BuoyModel {
+        pub model_idx : i16,
+        pub model : String,
+        pub group_name : String,
+        pub line : i8,
+        pub latitude : f64,
+        pub longitude : f64,
+        pub water_temp : f32,
+        pub salinity : f32,
+        pub height : f32,
+        pub weight : f32,
+    }
+
+    #[derive(Debug)]
+    struct Warn {
+        pub model_idx : i16,
+        pub model : String,
+        pub warn : i8,
+        pub temp_warn : i8,
+        pub salinity_warn : i8,
+        pub height_warn : i8,
+        pub weight_warn : i8,
+        pub location_warn : i8,
+    }
+
+    #[test]
+    fn warn_test() {
+        dotenv().ok();
+
+        let mut db = db::maria_lib::DataBase::init();
+
+        let data : Vec<BuoyModel> = db.conn.query_map("
+            SELECT model_idx,
+                model,
+                b.group_name,
+                line,
+                latitude,
+                longitude,
+                water_temp,
+                salinity,
+                height,
+                weight
+                FROM buoy_model a, buoy_group b WHERE a.group_id = b.group_id", |(
+                model_idx,
+                model,
+                group_name,
+                line,
+                latitude,
+                longitude,
+                water_temp,
+                salinity,
+                height,
+                weight,
+                )| BuoyModel {
+                    model_idx,
+                    model,
+                    group_name,
+                    line,
+                    latitude,
+                    longitude,
+                    water_temp,
+                    salinity,
+                    height,
+                    weight,
+                }).expect("DB ERROR!");
+
+
+        let mut warn : Vec<Warn> = db.conn.query_map("
+            SELECT model_idx,
+                model,
+                warn,
+                temp_warn,
+                salinity_warn,
+                height_warn,
+                weight_warn,
+                location_warn
+                FROM buoy_model", |(
+                    model_idx,
+                    model,
+                    warn,
+                    temp_warn,
+                    salinity_warn,
+                    height_warn,
+                    weight_warn,
+                    location_warn
+                )| Warn {
+                    model_idx,
+                    model,
+                    warn,
+                    temp_warn,
+                    salinity_warn,
+                    height_warn,
+                    weight_warn,
+                    location_warn
+                }).expect("DB ERROR!");
+
+            
+        // 높이 8.5cm 밑으로 가면 경고
+        // 무게는 50 이상으로 가면 경고
+        // 염도는 30 이하로 내려가면 경고
+        // 33 이상이면 경고
+        // 수온은 일단 보류
+        // 한 라인의 부이 다수가 경고를 뛰우면 실질적인 경고를 내야하나요...
+        for (idx, val) in data.iter().enumerate() {
+            if val.height < 8.5 {
+                println!("{}의 높이 경고 {}", val.model, val.height);
+            }
+
+            if val.salinity < 28.3 {
+                println!("{}의 염도 낮음 경고 {}", val.model, val.salinity);
+
+            } else if val.salinity  > 33.0 {
+                println!("{}의 옆도 높음 경고 {}", val.model, val.salinity);
+
+            }
+
+            if val.weight > 70.0 {
+                println!("{}의 무게 경고 {}", val.model, val.weight);
+
+            }
+
+
+        }
+
+
+
+        
+
+    }
+
+
 }

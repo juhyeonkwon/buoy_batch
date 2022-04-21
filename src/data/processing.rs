@@ -1,4 +1,7 @@
 use super::maria::Insertbuoy;
+use chrono;
+use chrono::prelude::*;
+use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -9,6 +12,7 @@ pub struct BuoyAvg {
     pub avg_salinity: f32,
     pub avg_height: f32,
     pub avg_weight: f32,
+    pub date: String,
 }
 
 pub fn avg_buoy_processing(row: Vec<Insertbuoy>) -> Vec<BuoyAvg> {
@@ -26,6 +30,12 @@ pub fn avg_buoy_processing(row: Vec<Insertbuoy>) -> Vec<BuoyAvg> {
             }
         }
     }
+
+    let now: DateTime<Local> = Local::now() - Duration::days(1);
+    // let now = Local::now();
+
+    let now_str = now.to_string();
+    let key_date = &now_str[0..10];
 
     let mut vector: Vec<BuoyAvg> = Vec::new();
 
@@ -57,6 +67,7 @@ pub fn avg_buoy_processing(row: Vec<Insertbuoy>) -> Vec<BuoyAvg> {
             avg_salinity,
             avg_height,
             avg_weight,
+            date: String::from(key_date),
         });
     }
 

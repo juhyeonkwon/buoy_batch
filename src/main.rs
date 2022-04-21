@@ -47,6 +47,24 @@ fn main() {
         }
     });
 
+    //RDBMS에서 값을 가져와서 그룹의 평균을 저장하는 크론잡 정의
+    let group_avg_thread = thread::spawn(|| {
+        println!("CronJob 5 : 그룹의 평균값 계산 및 저장 실행");
+
+        let mut sched = JobScheduler::new();
+
+        sched.add(Job::new("0 55 23 * * *".parse().unwrap(), || {
+            task::group_avg_task("GruopAvgBatch");
+            task::get_line_avg_task("GroupLineBatchTask");
+        }));
+
+        loop {
+            sched.tick();
+
+            std::thread::sleep(Duration::from_millis(500));
+        }
+    });
+
     let main_data_thread = thread::spawn(|| {
         println!("CronJob 3 : 메인데이터(관측, 파고) 저장 실행");
 
@@ -69,7 +87,7 @@ fn main() {
         let mut sched = JobScheduler::new();
 
         sched.add(Job::new("0 0,30 * * * *".parse().unwrap(), || {
-            task::obs_all_task("Main 데이터 저장(조류)");
+            task::tidal_all_task("Main 데이터 저장(조류)");
         }));
 
         loop {
@@ -81,6 +99,7 @@ fn main() {
 
     rdbms_thread.join().unwrap();
     avg_thread.join().unwrap();
+    group_avg_thread.join().unwrap();
     main_data_thread.join().unwrap();
     main_tidal_thread.join().unwrap();
 }

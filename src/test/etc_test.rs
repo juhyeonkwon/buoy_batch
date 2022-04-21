@@ -238,12 +238,25 @@ mod tests {
             .expect("Error!!");
     }
 
-
     use crate::task::avg_task;
-    #[test] 
+    #[test]
     fn avg_task_test() {
         dotenv().ok();
         avg_task("test_avg");
     }
 
+    use crate::task::group_avg_task;
+    #[test]
+    fn group_avg_task_test() {
+        dotenv().ok();
+        group_avg_task("test_avg");
+    }
+
+
+    use crate::task::get_line_avg_task;
+    #[test]
+    fn get_line_avg_test() {
+        dotenv().ok();
+        get_line_avg_task("avg_line_test");
+    }
 }
