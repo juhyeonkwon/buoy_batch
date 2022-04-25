@@ -238,6 +238,13 @@ mod tests {
             .expect("Error!!");
     }
 
+    use crate::task::task;
+    #[test]
+    fn task_test() {
+        dotenv().ok();
+        task("test_task");
+    }
+
     use crate::task::avg_task;
     #[test]
     fn avg_task_test() {
@@ -252,11 +259,60 @@ mod tests {
         group_avg_task("test_avg");
     }
 
-
     use crate::task::get_line_avg_task;
     #[test]
     fn get_line_avg_test() {
         dotenv().ok();
         get_line_avg_task("avg_line_test");
+    }
+
+    use crate::task::warn_task;
+    #[test]
+    fn warn_task_test() {
+        dotenv().ok();
+        warn_task("warn_test");
+    }
+
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct WarnData {
+        pub group_id : i16,
+        pub group_name : String,
+        pub line : i8,
+        pub warn_type : String,
+        pub message : String
+    }
+    
+    impl<'a, 'b> PartialEq<WarnData> for WarnData {
+        fn eq(&self, other: &WarnData) -> bool {
+            self.group_id == other.group_id &&
+            self.group_name == other.group_name &&
+            self.line == other.line &&
+            self.warn_type == other.warn_type &&
+            self.message == other.message
+        }
+    }
+    
+    #[test]
+    fn struct_eq_test() {
+        let a = WarnData {
+            group_id : 1,
+            group_name : String::from("a"),
+            line : 1,
+            warn_type : String::from("ty"),
+            message : String::from("abc"),
+        };
+
+        let b = WarnData {
+            group_id : 1,
+            group_name : String::from("a"),
+            line : 1,
+            warn_type : String::from("ty"),
+            message : String::from("abc"),
+        };
+
+        if a==b {
+            print!("같아요~")
+        }
     }
 }

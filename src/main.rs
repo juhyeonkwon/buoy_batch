@@ -21,6 +21,9 @@ fn main() {
 
         sched.add(Job::new("0 1 * * * *".parse().unwrap(), || {
             task::task("Batch");
+
+            //task에서 값을 가져온것을 토대로 경고 리스트를 저장합니다.
+            task::warn_task("set Warn list");
         }));
 
         loop {
@@ -36,7 +39,9 @@ fn main() {
 
         let mut sched = JobScheduler::new();
 
-        sched.add(Job::new("0 5 0 * * *".parse().unwrap(), || {
+        //크론잡의 시간이 UTC로 되기 때문에 나는 어찌할 바를 모르겠다..
+        // 15 + 9 = 24 (한국 시간 기준 0시)
+        sched.add(Job::new("0 7 15 * * *".parse().unwrap(), || {
             task::avg_task("AvgBatch");
         }));
 
@@ -53,7 +58,8 @@ fn main() {
 
         let mut sched = JobScheduler::new();
 
-        sched.add(Job::new("0 55 23 * * *".parse().unwrap(), || {
+        // 14 + 9 = 23 (한국 시간 기준 23시)
+        sched.add(Job::new("0 55 14 * * *".parse().unwrap(), || {
             task::group_avg_task("GruopAvgBatch");
             task::get_line_avg_task("GroupLineBatchTask");
         }));

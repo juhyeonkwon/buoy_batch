@@ -285,107 +285,24 @@ mod tests {
         pub location_warn : i8,
     }
 
+
+    use crate::data::maria::update_warn_buoy;
+
     #[test]
     fn warn_test() {
         dotenv().ok();
 
         let mut db = db::maria_lib::DataBase::init();
-
-        let data : Vec<BuoyModel> = db.conn.query_map("
-            SELECT model_idx,
-                model,
-                b.group_name,
-                line,
-                latitude,
-                longitude,
-                water_temp,
-                salinity,
-                height,
-                weight
-                FROM buoy_model a, buoy_group b WHERE a.group_id = b.group_id", |(
-                model_idx,
-                model,
-                group_name,
-                line,
-                latitude,
-                longitude,
-                water_temp,
-                salinity,
-                height,
-                weight,
-                )| BuoyModel {
-                    model_idx,
-                    model,
-                    group_name,
-                    line,
-                    latitude,
-                    longitude,
-                    water_temp,
-                    salinity,
-                    height,
-                    weight,
-                }).expect("DB ERROR!");
-
-
-        let mut warn : Vec<Warn> = db.conn.query_map("
-            SELECT model_idx,
-                model,
-                warn,
-                temp_warn,
-                salinity_warn,
-                height_warn,
-                weight_warn,
-                location_warn
-                FROM buoy_model", |(
-                    model_idx,
-                    model,
-                    warn,
-                    temp_warn,
-                    salinity_warn,
-                    height_warn,
-                    weight_warn,
-                    location_warn
-                )| Warn {
-                    model_idx,
-                    model,
-                    warn,
-                    temp_warn,
-                    salinity_warn,
-                    height_warn,
-                    weight_warn,
-                    location_warn
-                }).expect("DB ERROR!");
-
             
         // 높이 8.5cm 밑으로 가면 경고
         // 무게는 50 이상으로 가면 경고
         // 염도는 30 이하로 내려가면 경고
         // 33 이상이면 경고
         // 수온은 일단 보류
-        // 한 라인의 부이 다수가 경고를 뛰우면 실질적인 경고를 내야하나요...
-        for (idx, val) in data.iter().enumerate() {
-            if val.height < 8.5 {
-                println!("{}의 높이 경고 {}", val.model, val.height);
-            }
-
-            if val.salinity < 28.3 {
-                println!("{}의 염도 낮음 경고 {}", val.model, val.salinity);
-
-            } else if val.salinity  > 33.0 {
-                println!("{}의 옆도 높음 경고 {}", val.model, val.salinity);
-
-            }
-
-            if val.weight > 70.0 {
-                println!("{}의 무게 경고 {}", val.model, val.weight);
-
-            }
-
-
-        }
-
-
-
+        // 한 라인의 부이 다수가 경고를 뛰우면 실질적인 경고를 내야하는듯...
+        // batch 작업 시 각 값들을 가져와서 경고만 따로 Update를 한다음
+        // 일정 시간에 경고수를 체크해서, 경고를 레디스나 maria에 저장한다음, 가져온다..
+        update_warn_buoy(&mut db);
         
 
     }
