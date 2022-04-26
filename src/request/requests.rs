@@ -119,7 +119,14 @@ pub fn set_all_obs_data() {
     let key = "HefXKhyZpMNUAxmmMcpUg==";
 
     for val in data.iter() {
-        let recent = ObsRecentResp::get_data(key, &val.number).expect("get Data error!");
+        let recent = match ObsRecentResp::get_data(key, &val.number) {
+            Ok(v) => v,
+            Err(_) => {
+                println!("{}의 OBS 데이터가 존재하지 않습니다. ", val.number);
+                continue;
+            }
+        };
+
         let recent_struct: ObsRecentResp = serde_json::from_value(recent).expect("Error!");
         let recent_val: String = serde_json::to_string(&recent_struct.result.data).expect("Error!");
 
@@ -151,7 +158,13 @@ pub fn set_all_wave_height_data() {
     let key = "HefXKhyZpMNUAxmmMcpUg==";
 
     for val in data.iter() {
-        let wave_hight = ObsWaveHightResp::get_data(&key, &val.number).expect("error!");
+        let wave_hight = match ObsWaveHightResp::get_data(&key, &val.number) {
+            Ok(v) => v,
+            Err(_) =>  {
+                println!("{}의 파도, 파고 데이터 존재하지 않습니다.", val.number);
+                continue;
+            }
+        };
         let wave_hight_struct: ObsWaveHightResp = match serde_json::from_value(wave_hight) {
             Ok(v) => v,
             Err(_) => {

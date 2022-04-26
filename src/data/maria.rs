@@ -515,7 +515,6 @@ fn set_height_warn(val : &BuoyModel) -> i8 {
     }
 }
 
-
 fn set_weight_warn(val : &BuoyModel) -> i8 {
     if val.weight > 70.0 {
         1
