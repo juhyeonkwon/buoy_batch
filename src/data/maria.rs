@@ -49,7 +49,8 @@ struct BuoyModel {
 
 pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
     let mut db = DataBase::init();
-
+    let mut db2 = DataBase::init();
+    //Buoy_Model에서 모델의 정보들을 가져옵니다.
     let row = db
         .conn
         .query_map(
@@ -78,7 +79,14 @@ pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
             data.iter().map(|buoy| {
                 params! {
                   "model" => &buoy.model,
-                  "gruop_id" => hashmap.get(&buoy.model).expect("error! hash no type"),
+                  "gruop_id" => match hashmap.get(&buoy.model) {
+                      Some(v) => v,
+                      None => {
+                        hashmap.insert(String::from(&buoy.model), 0);
+                        create_buoy_model(&buoy.model, &mut db2);
+                        &0
+                      }
+                  },
                   "time" => &buoy.time,
                   "latitude" => buoy.lat,
                   "longitude" => buoy.lon,
@@ -97,6 +105,28 @@ pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
     update_warn_buoy(&mut db);
 
     hashmap
+}
+
+//만약 model에 없는 새로운 모델이 값으로 들어왔다면 해당 모델을 buoy_model에 Insert합니다.
+pub fn create_buoy_model(model: &String, db: &mut DataBase) {
+    let stmt = db.conn.prep("INSERT INTO 
+                  buoy_model (model, 
+                                group_id, 
+                                line, 
+                                latitude, 
+                                longitude, 
+                                water_temp, 
+                                salinity, 
+                                height, 
+                                weight, 
+                                warn
+                            ) 
+                                VALUES (:model, 0, 0, 0, 0, 0, 0, 0, 0, 0)").expect("Error!");
+    
+    db.conn.exec_drop(stmt, params! {
+        "model" => model 
+    }).expect("Error!");
+    
 }
 
 //buoy의 각 값들을 최신값으로 업데이트 합니다.
@@ -277,7 +307,7 @@ pub fn get_group_avg() -> Vec<Group> {
             group_water_temp,
             group_salinity,
             group_height,
-            group_weight FROM buoy_group",
+            group_weight FROM buoy_group where group_id > 0",
             |(
                 group_id,
                 group_name,
@@ -382,11 +412,11 @@ pub fn get_line_avg(row: &Vec<List>, db: &mut DataBase) -> Value {
     json
 }
 
-
 #[derive(Debug)]
 struct Warn {
     pub model_idx: i16,
     pub model: String,
+    pub warn: i8,
     pub temp_warn: i8,
     pub salinity_warn: i8,
     pub height_warn: i8,
@@ -394,8 +424,7 @@ struct Warn {
     pub location_warn: i8,
 }
 
-
-/*    
+/*
 latitude: f64,
 longitude: f64,
 water_temp: f32,
@@ -406,21 +435,31 @@ weight: f32,
 
 //각 스마트 부표별 경고여부를 설정합니다.
 pub fn update_warn_buoy(db: &mut DataBase) {
-    
     let buoy_model = get_buoy_model(db);
     // let mut warn = get_buoy_warn(db);
 
-    let mut warn : Vec<Warn> = Vec::new();
+    let mut warn: Vec<Warn> = Vec::new();
 
     for value in buoy_model.iter() {
+        let salinity_warn = set_salinity_warn(&value);
+        let height_warn = set_height_warn(&value);
+        let weight_warn = set_weight_warn(&value);
+
+        let mut warn_yn: i8 = 0;
+
+        if salinity_warn > 0 || height_warn > 0 || weight_warn > 0 {
+            warn_yn = 1;
+        }
+
         let temp = Warn {
-            model_idx : value.model_idx,
+            model_idx: value.model_idx,
             model: String::from(&value.model),
-            temp_warn: 0,   //수온경고는 임시로 놔둠
-            salinity_warn: set_salinity_warn(&value),
-            height_warn: set_height_warn(&value),
-            weight_warn: set_weight_warn(&value),
-            location_warn: 0 //위치 경고도 임시로 놔둠
+            warn: warn_yn,
+            temp_warn: 0, //수온경고는 임시로 놔둠
+            salinity_warn: salinity_warn,
+            height_warn: height_warn,
+            weight_warn: weight_warn,
+            location_warn: 0, //위치 경고도 임시로 놔둠
         };
 
         warn.push(temp);
@@ -435,13 +474,14 @@ pub fn update_warn_buoy(db: &mut DataBase) {
                                     salinity_warn = :salinity_warn, 
                                     height_warn = :height_warn, 
                                     weight_warn = :weight_warn, 
-                                    location_warn = :location_warn 
+                                    location_warn = :location_warn,
+                                    warn = :warn
                                 WHERE
                                     model = :model",
         )
         .expect("Prep Error");
 
-        db.conn
+    db.conn
         .exec_batch(
             stmt,
             warn.iter().map(|warn| {
@@ -451,7 +491,8 @@ pub fn update_warn_buoy(db: &mut DataBase) {
                     "height_warn" => warn.height_warn,
                     "weight_warn" => warn.weight_warn,
                     "location_warn" => warn.location_warn,
-                    "model" => &warn.model
+                    "model" => &warn.model,
+                    "warn" => warn.warn
                 }
             }),
         )
@@ -459,10 +500,10 @@ pub fn update_warn_buoy(db: &mut DataBase) {
 }
 
 fn get_buoy_model(db: &mut DataBase) -> Vec<BuoyModel> {
-    let buoy : Vec<BuoyModel> = db
-    .conn
-    .query_map(
-        "SELECT 
+    let buoy: Vec<BuoyModel> = db
+        .conn
+        .query_map(
+            "SELECT 
             model_idx,
             model,
             latitude,
@@ -472,42 +513,35 @@ fn get_buoy_model(db: &mut DataBase) -> Vec<BuoyModel> {
             height,
             weight
          FROM buoy_model order by model_idx asc",
-        |(
-            model_idx,
-            model,
-            latitude,
-            longitude,
-            water_temp,
-            salinity,
-            height,
-            weight
-        )| BuoyModel {
-            model_idx,
-            model,
-            latitude,
-            longitude,
-            water_temp,
-            salinity,
-            height,
-            weight
-        },
-    )
-    .expect("DB Error!");
+            |(model_idx, model, latitude, longitude, water_temp, salinity, height, weight)| {
+                BuoyModel {
+                    model_idx,
+                    model,
+                    latitude,
+                    longitude,
+                    water_temp,
+                    salinity,
+                    height,
+                    weight,
+                }
+            },
+        )
+        .expect("DB Error!");
 
     buoy
 }
 
-fn set_salinity_warn(val : &BuoyModel) -> i8 {
+fn set_salinity_warn(val: &BuoyModel) -> i8 {
     if val.salinity < 28.3 {
         1
-    } else if val.salinity  > 33.0 {
+    } else if val.salinity > 33.0 {
         2
     } else {
         0
     }
 }
 
-fn set_height_warn(val : &BuoyModel) -> i8 {
+fn set_height_warn(val: &BuoyModel) -> i8 {
     if val.height < 8.5 {
         1
     } else {
@@ -515,14 +549,13 @@ fn set_height_warn(val : &BuoyModel) -> i8 {
     }
 }
 
-fn set_weight_warn(val : &BuoyModel) -> i8 {
+fn set_weight_warn(val: &BuoyModel) -> i8 {
     if val.weight > 70.0 {
         1
     } else {
         0
     }
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WarnInfo {
@@ -541,20 +574,20 @@ pub struct WarnInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WarnData {
-    pub group_id : i16,
-    pub group_name : String,
-    pub line : i8,
-    pub warn_type : String,
-    pub message : String
+    pub group_id: i16,
+    pub group_name: String,
+    pub line: i8,
+    pub warn_type: String,
+    pub message: String,
 }
 
 impl<'a, 'b> PartialEq<WarnData> for WarnData {
     fn eq(&self, other: &WarnData) -> bool {
-        self.group_id == other.group_id &&
-        self.group_name == other.group_name &&
-        self.line == other.line &&
-        self.warn_type == other.warn_type &&
-        self.message == other.message
+        self.group_id == other.group_id
+            && self.group_name == other.group_name
+            && self.line == other.line
+            && self.warn_type == other.warn_type
+            && self.message == other.message
     }
 }
 
@@ -565,10 +598,9 @@ pub struct GroupList {
 }
 
 pub fn get_warn_list(db: &mut DataBase) -> Vec<WarnData> {
-
     //배열 저장
-    let mut vector : Vec<WarnData> = Vec::new();
-    
+    let mut vector: Vec<WarnData> = Vec::new();
+
     let group_list: Vec<GroupList> = db
         .conn
         .query_map(
@@ -636,90 +668,86 @@ pub fn get_warn_list(db: &mut DataBase) -> Vec<WarnData> {
             .expect("Error!");
 
         let mut temp_vec = set_warn_struct(&temp);
-        
+
         vector.append(&mut temp_vec);
-        
     }
 
     vector
 }
 
-
-fn set_warn_struct(warn_list : &[WarnInfo]) -> Vec<WarnData> {
-
-    let mut temp_list : Vec<WarnData> = Vec::new();
+fn set_warn_struct(warn_list: &[WarnInfo]) -> Vec<WarnData> {
+    let mut temp_list: Vec<WarnData> = Vec::new();
 
     for warn in warn_list.iter() {
         if warn.low_temp_warn as f32 > warn.mark {
             temp_list.push(WarnData {
-                group_id : warn.group_id,
-                group_name : String::from(&warn.group_name),
-                line : warn.line,
-                warn_type : String::from("temperature"),
-                message : String::from("low"),
+                group_id: warn.group_id,
+                group_name: String::from(&warn.group_name),
+                line: warn.line,
+                warn_type: String::from("temperature"),
+                message: String::from("low"),
             });
         }
 
         if warn.high_temp_warn as f32 > warn.mark {
             temp_list.push(WarnData {
-                group_id : warn.group_id,
-                group_name : String::from(&warn.group_name),
-                line : warn.line,
-                warn_type : String::from("temperature"),
-                message : String::from("high"),
+                group_id: warn.group_id,
+                group_name: String::from(&warn.group_name),
+                line: warn.line,
+                warn_type: String::from("temperature"),
+                message: String::from("high"),
             });
         }
 
         if warn.low_salinity_warn as f32 > warn.mark {
             temp_list.push(WarnData {
-                group_id : warn.group_id,
-                group_name : String::from(&warn.group_name),
-                line : warn.line,
-                warn_type : String::from("salinity"),
-                message : String::from("low"),
+                group_id: warn.group_id,
+                group_name: String::from(&warn.group_name),
+                line: warn.line,
+                warn_type: String::from("salinity"),
+                message: String::from("low"),
             });
         }
 
         if warn.high_salinity_warn as f32 > warn.mark {
             temp_list.push(WarnData {
-                group_id : warn.group_id,
-                group_name : String::from(&warn.group_name),
-                line : warn.line,
-                warn_type : String::from("salinity"),
-                message : String::from("high"),
+                group_id: warn.group_id,
+                group_name: String::from(&warn.group_name),
+                line: warn.line,
+                warn_type: String::from("salinity"),
+                message: String::from("high"),
             });
         }
 
         if warn.low_height_warn as f32 > warn.mark {
             temp_list.push(WarnData {
-                group_id : warn.group_id,
-                group_name : String::from(&warn.group_name),
-                line : warn.line,
-                warn_type : String::from("height"),
-                message : String::from("low"),
+                group_id: warn.group_id,
+                group_name: String::from(&warn.group_name),
+                line: warn.line,
+                warn_type: String::from("height"),
+                message: String::from("low"),
             });
         }
 
         if warn.weight_warn as f32 > warn.mark {
             temp_list.push(WarnData {
-                group_id : warn.group_id,
-                group_name : String::from(&warn.group_name),
-                line : warn.line,
-                warn_type : String::from("weight"),
-                message : String::from("high"),
-            });
-        }
-        
-        if warn.location_warn as f32 > warn.mark {
-            temp_list.push(WarnData {
-                group_id : warn.group_id,
-                group_name : String::from(&warn.group_name),
-                line : warn.line,
-                warn_type : String::from("location"),
-                message : String::from("missing"),
+                group_id: warn.group_id,
+                group_name: String::from(&warn.group_name),
+                line: warn.line,
+                warn_type: String::from("weight"),
+                message: String::from("high"),
             });
         }
 
+        if warn.location_warn as f32 > warn.mark {
+            temp_list.push(WarnData {
+                group_id: warn.group_id,
+                group_name: String::from(&warn.group_name),
+                line: warn.line,
+                warn_type: String::from("location"),
+                message: String::from("missing"),
+            });
+        }
     }
 
     temp_list

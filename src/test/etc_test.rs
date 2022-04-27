@@ -273,45 +273,44 @@ mod tests {
         warn_task("warn_test");
     }
 
-
     #[derive(Serialize, Deserialize, Debug)]
     pub struct WarnData {
-        pub group_id : i16,
-        pub group_name : String,
-        pub line : i8,
-        pub warn_type : String,
-        pub message : String
+        pub group_id: i16,
+        pub group_name: String,
+        pub line: i8,
+        pub warn_type: String,
+        pub message: String,
     }
-    
+
     impl<'a, 'b> PartialEq<WarnData> for WarnData {
         fn eq(&self, other: &WarnData) -> bool {
-            self.group_id == other.group_id &&
-            self.group_name == other.group_name &&
-            self.line == other.line &&
-            self.warn_type == other.warn_type &&
-            self.message == other.message
+            self.group_id == other.group_id
+                && self.group_name == other.group_name
+                && self.line == other.line
+                && self.warn_type == other.warn_type
+                && self.message == other.message
         }
     }
-    
+
     #[test]
     fn struct_eq_test() {
         let a = WarnData {
-            group_id : 1,
-            group_name : String::from("a"),
-            line : 1,
-            warn_type : String::from("ty"),
-            message : String::from("abc"),
+            group_id: 1,
+            group_name: String::from("a"),
+            line: 1,
+            warn_type: String::from("ty"),
+            message: String::from("abc"),
         };
 
         let b = WarnData {
-            group_id : 1,
-            group_name : String::from("a"),
-            line : 1,
-            warn_type : String::from("ty"),
-            message : String::from("abc"),
+            group_id: 1,
+            group_name: String::from("a"),
+            line: 1,
+            warn_type: String::from("ty"),
+            message: String::from("abc"),
         };
 
-        if a==b {
+        if a == b {
             print!("같아요~")
         }
     }

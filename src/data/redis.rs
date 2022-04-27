@@ -116,11 +116,11 @@ pub fn set_group_avg_data(proceed_data: Vec<Group>) {
             .expect("redis SET Error ocuured");
     }
 }
-use crate::data::maria::List;
 use crate::data::maria::Line;
+use crate::data::maria::List;
 
 //라인별 avg 데이터를 저장한다
-pub fn set_group_line_avg_data(data : &mut Value, list : &Vec<List> ) {
+pub fn set_group_line_avg_data(data: &mut Value, list: &Vec<List>) {
     //키 날짜 세팅
     let now: DateTime<Local> = Local::now();
     let now_str = now.to_string();
@@ -130,8 +130,8 @@ pub fn set_group_line_avg_data(data : &mut Value, list : &Vec<List> ) {
     let mut conn = redis_lib::connect_redis();
 
     for group in list.iter() {
-
-        let mut temp : Vec<Value> = serde_json::from_value(data[&group.group_name].take()).expect("Parse Error!");
+        let mut temp: Vec<Value> =
+            serde_json::from_value(data[&group.group_name].take()).expect("Parse Error!");
 
         for data in temp.iter_mut() {
             data["date"] = json!(key_date);
@@ -144,7 +144,7 @@ pub fn set_group_line_avg_data(data : &mut Value, list : &Vec<List> ) {
                 .query(&mut conn)
                 .expect("redis SET Error ocuured");
         }
-        
+
         // let _key = format!("{}_group_line_{}", group.group_name);
 
         // let _text: String = serde_json::to_string(&val).expect("parse Text error!");
@@ -160,35 +160,31 @@ pub fn set_group_line_avg_data(data : &mut Value, list : &Vec<List> ) {
 use super::maria::WarnData;
 
 //경고관련 레디스 코드입니다.
-pub fn set_warn_redis(data : &mut Vec<WarnData>) {
-
+pub fn set_warn_redis(data: &mut Vec<WarnData>) {
     let mut conn = redis_lib::connect_redis();
 
-    let warn_text : String = match redis::cmd("GET")
-        .arg("warn_list")
-        .query(&mut conn) {
-            Ok(v) => v,
-            Err(_) => {
-                println!("Get Not Found");
-                return ;
-            }
-        };
+    let warn_text: String = match redis::cmd("GET").arg("warn_list").query(&mut conn) {
+        Ok(v) => v,
+        Err(_) => {
+            println!("Get Not Found");
+            return;
+        }
+    };
 
     //알림 데이터 설정을 위해 이전값을 저장해 둡니다.
-    let pre_warn : Vec<WarnData> = serde_json::from_str(&warn_text).expect("Parse Error!");
+    let pre_warn: Vec<WarnData> = serde_json::from_str(&warn_text).expect("Parse Error!");
 
     //새로운 경고값을 레디스에 갱신을 합니다람쥐
-    let set_warn_test : String = serde_json::to_string(data).expect("parse Error!");
+    let set_warn_test: String = serde_json::to_string(data).expect("parse Error!");
 
-    let _ : () = redis::cmd("SET")
-                        .arg("warn_list")
-                        .arg(&set_warn_test)
-                        .query(&mut conn)
-                        .expect("Redis Set Error!");
-    
+    let _: () = redis::cmd("SET")
+        .arg("warn_list")
+        .arg(&set_warn_test)
+        .query(&mut conn)
+        .expect("Redis Set Error!");
+
     //알림갈 데이터 만들기 (기존 값에 있으면 삭제하고, 없는것들만 냄겨둔다)
     for old_val in pre_warn.iter() {
-
         for (i, new_val) in data.iter_mut().enumerate() {
             if new_val == old_val {
                 data.swap_remove(i);
@@ -198,11 +194,10 @@ pub fn set_warn_redis(data : &mut Vec<WarnData>) {
     }
 
     //알림 데이터 설정
-    let alarm_text : String = serde_json::to_string(data).expect("parse Error!");
-    let _ : () = redis::cmd("SET")
-                        .arg("warn_alarm_list")
-                        .arg(&alarm_text)
-                        .query(&mut conn)
-                        .expect("Redis Set Error!");
-
+    let alarm_text: String = serde_json::to_string(data).expect("parse Error!");
+    let _: () = redis::cmd("SET")
+        .arg("warn_alarm_list")
+        .arg(&alarm_text)
+        .query(&mut conn)
+        .expect("Redis Set Error!");
 }

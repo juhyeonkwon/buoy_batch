@@ -160,7 +160,7 @@ pub fn set_all_wave_height_data() {
     for val in data.iter() {
         let wave_hight = match ObsWaveHightResp::get_data(&key, &val.number) {
             Ok(v) => v,
-            Err(_) =>  {
+            Err(_) => {
                 println!("{}의 파도, 파고 데이터 존재하지 않습니다.", val.number);
                 continue;
             }

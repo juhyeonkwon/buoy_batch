@@ -130,7 +130,6 @@ pub fn tidal_all_task(name: &str) {
     println!("{} 작업 완료 : {}", name, now_str);
 }
 
-
 //경고 TASK
 pub fn warn_task(name: &str) {
     let now: DateTime<Local> = Local::now();
@@ -143,11 +142,9 @@ pub fn warn_task(name: &str) {
     //현재 DB에서 경고 리스트를 불러옵니다.
     let mut warn_list = super::data::maria::get_warn_list(&mut db);
 
+    //경고 리스트를 저장하고, 알람 리스트를 갱신합니다람쥐.
 
-    //경고 리스트를 저장하고, 알람 리스트를 갱신합니다람쥐.  
-    
     super::data::redis::set_warn_redis(&mut warn_list);
-    
 
     println!("{} 작업 완료 : {}", name, now_str);
 }

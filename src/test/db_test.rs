@@ -216,7 +216,7 @@ mod tests {
         group_salinity: f64,
         group_height: f64,
         group_weight: f64,
-        plain_buoy : i16
+        plain_buoy: i16,
     }
 
     #[test]
@@ -230,7 +230,7 @@ mod tests {
         let data: Vec<Group> = db
             .conn
             .query_map(
-                "SELECT * FROM buoy_group",
+                "SELECT * FROM buoy_group where group_id > 0",
                 |(
                     group_id,
                     group_name,
@@ -258,33 +258,31 @@ mod tests {
         println!("{:#?}, {}", data, &now_str[0..10]);
     }
 
-
     #[derive(Debug)]
     struct BuoyModel {
-        pub model_idx : i16,
-        pub model : String,
-        pub group_name : String,
-        pub line : i8,
-        pub latitude : f64,
-        pub longitude : f64,
-        pub water_temp : f32,
-        pub salinity : f32,
-        pub height : f32,
-        pub weight : f32,
+        pub model_idx: i16,
+        pub model: String,
+        pub group_name: String,
+        pub line: i8,
+        pub latitude: f64,
+        pub longitude: f64,
+        pub water_temp: f32,
+        pub salinity: f32,
+        pub height: f32,
+        pub weight: f32,
     }
 
     #[derive(Debug)]
     struct Warn {
-        pub model_idx : i16,
-        pub model : String,
-        pub warn : i8,
-        pub temp_warn : i8,
-        pub salinity_warn : i8,
-        pub height_warn : i8,
-        pub weight_warn : i8,
-        pub location_warn : i8,
+        pub model_idx: i16,
+        pub model: String,
+        pub warn: i8,
+        pub temp_warn: i8,
+        pub salinity_warn: i8,
+        pub height_warn: i8,
+        pub weight_warn: i8,
+        pub location_warn: i8,
     }
-
 
     use crate::data::maria::update_warn_buoy;
 
@@ -293,7 +291,7 @@ mod tests {
         dotenv().ok();
 
         let mut db = db::maria_lib::DataBase::init();
-            
+
         // 높이 8.5cm 밑으로 가면 경고
         // 무게는 50 이상으로 가면 경고
         // 염도는 30 이하로 내려가면 경고
@@ -303,9 +301,5 @@ mod tests {
         // batch 작업 시 각 값들을 가져와서 경고만 따로 Update를 한다음
         // 일정 시간에 경고수를 체크해서, 경고를 레디스나 maria에 저장한다음, 가져온다..
         update_warn_buoy(&mut db);
-        
-
     }
-
-
 }
