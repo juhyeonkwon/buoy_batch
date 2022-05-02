@@ -627,7 +627,7 @@ pub fn get_warn_list(db: &mut DataBase) -> Vec<WarnData> {
                                         SUM(location_warn = 1) AS location_warn,
                                         COUNT(*) * 0.5 AS mark
                                     FROM buoy_model a, buoy_group b 
-                                    WHERE a.group_id = b.group_id AND a.group_id = :group_id 
+                                    WHERE a.group_id = b.group_id AND a.group_id = :group_id AND a.group_id > 0
                                     GROUP BY line",
             )
             .expect("STMT Error");

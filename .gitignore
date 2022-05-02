@@ -6,3 +6,4 @@ a.sql
 create.sql
 insert_bouy_model.sql
 insert_group.sql
+*.exe
