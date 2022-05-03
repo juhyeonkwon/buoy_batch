@@ -220,7 +220,16 @@ pub fn set_all_tidal_data() {
         let mut tidal_val: String = String::from("");
 
         if val.tide_velocity == 1 {
-            tidal = TidalObsNowResp::get_data(&key, &val.number).expect("데이터 가져오기 error!");
+            tidal = match TidalObsNowResp::get_data(&key, &val.number) {
+                Ok(v) => v,
+                Err(e) => {
+                    println!(
+                        "{:#?}, {} 조류 데이터가 아직 존재하지 않습니다.",
+                        e, val.number
+                    );
+                    continue ;
+                }
+            };
             // println!("{:#?}", tidal);
             let tidal_struct: TidalObsNowResp = match serde_json::from_value(tidal) {
                 Ok(v) => v,
@@ -235,7 +244,16 @@ pub fn set_all_tidal_data() {
             )
             .expect("parse Error!");
         } else if val.tide_velocity == 2 {
-            tidal = TidalRaderNowResp::get_data(&key, &val.number).expect("error!");
+            tidal = match TidalRaderNowResp::get_data(&key, &val.number) {
+                Ok(v) => v,
+                Err(e) => {
+                    println!(
+                        "{:#?}, {} 조류 데이터가 아직 존재하지 않습니다.",
+                        e, val.number
+                    );
+                    continue ;
+                }
+            };
             let tidal_struct: TidalRaderNowResp = match serde_json::from_value(tidal) {
                 Ok(v) => v,
                 Err(e) => {

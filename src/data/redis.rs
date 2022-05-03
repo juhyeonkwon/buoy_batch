@@ -42,6 +42,8 @@ pub fn get_data() -> Vec<Buoy> {
     buoys
 }
 
+
+// 각 모델의 AVG 데이터를 저장합니다.
 pub fn set_avg_data(proceed_data: Vec<BuoyAvg>) {
     //키 날짜 세팅
     let now: DateTime<Local> = Local::now() - Duration::days(1);
@@ -65,32 +67,35 @@ pub fn set_avg_data(proceed_data: Vec<BuoyAvg>) {
     }
 }
 
-pub fn set_line_avg_data(proceed_data: Vec<Group>) {
-    //키 날짜 세팅
-    let now: DateTime<Local> = Local::now();
-    let now_str = now.to_string();
-    let key_date = &now_str[0..10];
+// pub fn set_line_avg_data(proceed_data: Vec<Group>) {
+//     //키 날짜 세팅
+//     let now: DateTime<Local> = Local::now();
+//     let now_str = now.to_string();
+//     let key_date = &now_str[0..10];
 
-    //redis 세팅
-    let mut conn = redis_lib::connect_redis();
+//     //redis 세팅
+//     let mut conn = redis_lib::connect_redis();
 
-    for data in proceed_data {
-        let mut val: Value = serde_json::to_value(&data).expect("Error! on ~");
+//     for data in proceed_data {
+//         let mut val: Value = serde_json::to_value(&data).expect("Error! on ~");
 
-        val["date"] = json!(key_date);
+//         val["date"] = json!(key_date);
 
-        let _key = format!("{}_group", data.group_name);
+//         let _key = format!("{}_group", data.group_name);
 
-        let _text: String = serde_json::to_string(&val).expect("parse Text error!");
+//         let _text: String = serde_json::to_string(&val).expect("parse Text error!");
 
-        let _: () = redis::cmd("LPUSH")
-            .arg(_key)
-            .arg(_text)
-            .query(&mut conn)
-            .expect("redis SET Error ocuured");
-    }
-}
+//         let _: () = redis::cmd("LPUSH")
+//             .arg(_key)
+//             .arg(_text)
+//             .query(&mut conn)
+//             .expect("redis SET Error ocuured");
+//     }
+// }
 
+// 변경전 -> 그룹이름_group 에서 
+// 변경후 -> 그룹ID,_group로 변경
+// 2022.05.02. by KwonJuHyeon.
 pub fn set_group_avg_data(proceed_data: Vec<Group>) {
     //키 날짜 세팅
     let now: DateTime<Local> = Local::now();
@@ -105,7 +110,7 @@ pub fn set_group_avg_data(proceed_data: Vec<Group>) {
 
         val["date"] = json!(key_date);
 
-        let _key = format!("{}_group", data.group_name);
+        let _key = format!("{}_group", data.group_id);
 
         let _text: String = serde_json::to_string(&val).expect("parse Text error!");
 
@@ -131,11 +136,11 @@ pub fn set_group_line_avg_data(data: &mut Value, list: &Vec<List>) {
 
     for group in list.iter() {
         let mut temp: Vec<Value> =
-            serde_json::from_value(data[&group.group_name].take()).expect("Parse Error!");
+            serde_json::from_value(data[group.group_id.to_string()].take()).expect("Parse Error!");
 
         for data in temp.iter_mut() {
             data["date"] = json!(key_date);
-            let _key = format!("{}_group_line_{}", group.group_name, data["line"]);
+            let _key = format!("{}_group_line_{}", group.group_id, data["line"]);
             let _text: String = serde_json::to_string(&data).expect("parse Text error!");
 
             let _: () = redis::cmd("LPUSH")

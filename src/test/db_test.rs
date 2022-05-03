@@ -219,44 +219,44 @@ mod tests {
         plain_buoy: i16,
     }
 
-    #[test]
-    fn group_avg() {
-        dotenv().ok();
+    // #[test]
+    // fn group_avg() {
+    //     dotenv().ok();
 
-        let mut db = db::maria_lib::DataBase::init();
-        let now: DateTime<Local> = Local::now();
-        let now_str = now.to_string();
+    //     let mut db = db::maria_lib::DataBase::init();
+    //     let now: DateTime<Local> = Local::now();
+    //     let now_str = now.to_string();
 
-        let data: Vec<Group> = db
-            .conn
-            .query_map(
-                "SELECT * FROM buoy_group where group_id > 0",
-                |(
-                    group_id,
-                    group_name,
-                    group_latitude,
-                    group_longitude,
-                    group_water_temp,
-                    group_salinity,
-                    group_height,
-                    group_weight,
-                    plain_buoy,
-                )| Group {
-                    group_id,
-                    group_name,
-                    group_latitude,
-                    group_longitude,
-                    group_water_temp,
-                    group_salinity,
-                    group_height,
-                    group_weight,
-                    plain_buoy,
-                },
-            )
-            .expect("query Error occured");
+    //     let data: Vec<Group> = db
+    //         .conn
+    //         .query_map(
+    //             "SELECT * FROM buoy_group where group_id > 0",
+    //             |(
+    //                 group_id,
+    //                 group_name,
+    //                 group_latitude,
+    //                 group_longitude,
+    //                 group_water_temp,
+    //                 group_salinity,
+    //                 group_height,
+    //                 group_weight,
+    //                 plain_buoy,
+    //             )| Group {
+    //                 group_id,
+    //                 group_name,
+    //                 group_latitude,
+    //                 group_longitude,
+    //                 group_water_temp,
+    //                 group_salinity,
+    //                 group_height,
+    //                 group_weight,
+    //                 plain_buoy,
+    //             },
+    //         )
+    //         .expect("query Error occured");
 
-        println!("{:#?}, {}", data, &now_str[0..10]);
-    }
+    //     println!("{:#?}, {}", data, &now_str[0..10]);
+    // }
 
     #[derive(Debug)]
     struct BuoyModel {
