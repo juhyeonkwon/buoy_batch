@@ -27,12 +27,12 @@ pub struct Modelinfo {
 #[derive(Serialize, Debug)]
 pub struct GroupAvg {
     group_id: i32,
-    group_latitude: f32,
-    group_longitude: f32,
-    group_water_temp: f32,
-    group_salinity: f32,
-    group_height: f32,
-    group_weight: f32,
+    group_latitude: f64,
+    group_longitude: f64,
+    group_water_temp: f64,
+    group_salinity: f64,
+    group_height: f64,
+    group_weight: f64,
 }
 
 #[derive(Serialize, Debug)]
@@ -99,6 +99,7 @@ pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
         )
         .expect("error occured");
 
+    //buoy의 각 값들을 최신값으로 업데이트
     update_buoy(&mut db, data);
 
     //최신값을 토대로 경고값을 설정합니다
@@ -168,19 +169,36 @@ pub fn update_buoy(db: &mut DataBase, data: &[Buoy]) {
     update_group_avg(db);
 }
 
+
+#[derive(Serialize, Debug)]
+struct UserId{
+    pub idx : i32
+}
+
 //각 최신값들을 토대로 그룹들의 현재 평균값을 저장합니다.
 pub fn update_group_avg(db: &mut DataBase) {
-    let _row = db
+    
+    //1. 유저 id를 가져옵니다
+
+    let user_idx : Vec<UserId> = db.conn.query_map("SELECT idx from users", |idx| {
+        UserId { idx }
+    }).expect("DB ERROR!");
+
+
+    //유저별 그룹의 평균값 저장
+    for idx in user_idx.iter() {
+        let stmt = db.conn.prep("SELECT group_id, 
+                                    AVG(latitude) AS group_latitude, 
+                                    AVG(longitude) AS group_longitude, 
+                                    AVG(water_temp) AS group_water_temp, 
+                                    AVG(salinity) AS group_salinity, 
+                                    AVG(height) AS group_height, 
+                                    AVG(weight) AS group_weight
+                                FROM buoy_model WHERE user_idx = :idx AND group_id > 0 GROUP BY group_id").expect("Err");
+        let _row = db
         .conn
-        .query_map(
-            "SELECT group_id, 
-                                AVG(latitude) AS group_latitude, 
-                                AVG(longitude) AS group_longitude, 
-                                AVG(water_temp) AS group_water_temp, 
-                                AVG(salinity) AS group_salinity, 
-                                AVG(height) AS group_height, 
-                                AVG(weight) AS group_weight
-                            FROM buoy_model GROUP BY group_id",
+        .exec_map(
+            stmt, params!{"idx" => idx.idx},
             |(
                 group_id,
                 group_latitude,
@@ -201,38 +219,41 @@ pub fn update_group_avg(db: &mut DataBase) {
         )
         .expect("error!");
 
-    let update_stmt = db
-        .conn
-        .prep(
-            r"UPDATE buoy_group
-                        SET                 
-                            group_latitude   = :group_latitude,
-                            group_longitude  = :group_longitude,
-                            group_water_temp = :group_water_temp,
-                            group_salinity   = :group_salinity,
-                            group_height     = :group_height,
-                            group_weight     = :group_weight
-                        WHERE
-                            group_id = :group_id",
-        )
-        .expect("Error on STMT");
+        let update_stmt = db
+            .conn
+            .prep(
+                r"UPDATE buoy_group
+                            SET                 
+                                group_latitude   = :group_latitude,
+                                group_longitude  = :group_longitude,
+                                group_water_temp = :group_water_temp,
+                                group_salinity   = :group_salinity,
+                                group_height     = :group_height,
+                                group_weight     = :group_weight
+                            WHERE
+                                group_id = :group_id",
+            )
+            .expect("Error on STMT");
 
-    db.conn
-        .exec_batch(
-            update_stmt,
-            _row.iter().map(|group| {
-                params! {
-                    "group_latitude" => group.group_latitude,
-                    "group_longitude" => group.group_longitude,
-                    "group_water_temp" => group.group_water_temp,
-                    "group_salinity" => group.group_salinity,
-                    "group_height" => group.group_height,
-                    "group_weight" => group.group_weight,
-                    "group_id" => group.group_id,
-                }
-            }),
-        )
-        .expect("Error!!");
+        db.conn
+            .exec_batch(
+                update_stmt,
+                _row.iter().map(|group| {
+                    params! {
+                        "group_latitude" => group.group_latitude,
+                        "group_longitude" => group.group_longitude,
+                        "group_water_temp" => group.group_water_temp,
+                        "group_salinity" => group.group_salinity,
+                        "group_height" => group.group_height,
+                        "group_weight" => group.group_weight,
+                        "group_id" => group.group_id,
+                    }
+                }),
+            )
+            .expect("Error!!");
+    }    
+    
+
 }
 
 //전날의 평균을 계산하기위해 하루치의 데이터들을 가져옵니다.
@@ -292,6 +313,7 @@ pub struct Group {
     pub group_salinity: f64,
     pub group_height: f64,
     pub group_weight: f64,
+    pub user_idx : i32,
 }
 
 pub fn get_group_avg() -> Vec<Group> {
@@ -307,7 +329,8 @@ pub fn get_group_avg() -> Vec<Group> {
             group_water_temp,
             group_salinity,
             group_height,
-            group_weight FROM buoy_group where group_id > 0",
+            group_weight,
+            user_idx FROM buoy_group where group_id > 0",
             |(
                 group_id,
                 group_name,
@@ -317,6 +340,7 @@ pub fn get_group_avg() -> Vec<Group> {
                 group_salinity,
                 group_height,
                 group_weight,
+                user_idx
             )| Group {
                 group_id,
                 group_name,
@@ -326,6 +350,7 @@ pub fn get_group_avg() -> Vec<Group> {
                 group_salinity,
                 group_height,
                 group_weight,
+                user_idx
             },
         )
         .expect("query Error occured");
@@ -368,7 +393,7 @@ pub fn get_line_avg(row: &Vec<List>, db: &mut DataBase) -> Value {
             INNER JOIN
                 buoy_group b ON a.group_id = b.group_id
             WHERE
-                group_name = :name GROUP BY a.line",
+                a.group_id = :group_id GROUP BY a.line",
         )
         .expect("Error");
 
@@ -380,7 +405,7 @@ pub fn get_line_avg(row: &Vec<List>, db: &mut DataBase) -> Value {
             .exec_map(
                 &stmt,
                 params! {
-                    "name" => &value.group_name
+                    "group_id" => &value.group_id
                 },
                 |(
                     group_id,
@@ -406,7 +431,7 @@ pub fn get_line_avg(row: &Vec<List>, db: &mut DataBase) -> Value {
             )
             .expect("query Error occured");
 
-        json[&value.group_name] = json!(data);
+        json[value.group_id.to_string()] = json!(data);
     }
 
     json
@@ -570,6 +595,7 @@ pub struct WarnInfo {
     pub weight_warn: i8,
     pub location_warn: i8,
     pub mark: f32,
+    pub user_idx : i64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -579,6 +605,7 @@ pub struct WarnData {
     pub line: i8,
     pub warn_type: String,
     pub message: String,
+    pub user_idx : i64,
 }
 
 impl<'a, 'b> PartialEq<WarnData> for WarnData {
@@ -625,7 +652,8 @@ pub fn get_warn_list(db: &mut DataBase) -> Vec<WarnData> {
                                         SUM(height_warn = 1) AS low_height_warn,
                                         SUM(weight_warn = 1) AS weight_warn,
                                         SUM(location_warn = 1) AS location_warn,
-                                        COUNT(*) * 0.5 AS mark
+                                        COUNT(*) * 0.5 AS mark,
+                                        a.user_idx
                                     FROM buoy_model a, buoy_group b 
                                     WHERE a.group_id = b.group_id AND a.group_id = :group_id AND a.group_id > 0
                                     GROUP BY line",
@@ -651,6 +679,7 @@ pub fn get_warn_list(db: &mut DataBase) -> Vec<WarnData> {
                     weight_warn,
                     location_warn,
                     mark,
+                    user_idx,
                 )| WarnInfo {
                     group_id,
                     group_name,
@@ -663,6 +692,7 @@ pub fn get_warn_list(db: &mut DataBase) -> Vec<WarnData> {
                     weight_warn,
                     location_warn,
                     mark,
+                    user_idx,
                 },
             )
             .expect("Error!");
@@ -686,6 +716,7 @@ fn set_warn_struct(warn_list: &[WarnInfo]) -> Vec<WarnData> {
                 line: warn.line,
                 warn_type: String::from("temperature"),
                 message: String::from("low"),
+                user_idx : warn.user_idx,
             });
         }
 
@@ -696,6 +727,7 @@ fn set_warn_struct(warn_list: &[WarnInfo]) -> Vec<WarnData> {
                 line: warn.line,
                 warn_type: String::from("temperature"),
                 message: String::from("high"),
+                user_idx : warn.user_idx,
             });
         }
 
@@ -706,6 +738,7 @@ fn set_warn_struct(warn_list: &[WarnInfo]) -> Vec<WarnData> {
                 line: warn.line,
                 warn_type: String::from("salinity"),
                 message: String::from("low"),
+                user_idx : warn.user_idx,
             });
         }
 
@@ -716,6 +749,7 @@ fn set_warn_struct(warn_list: &[WarnInfo]) -> Vec<WarnData> {
                 line: warn.line,
                 warn_type: String::from("salinity"),
                 message: String::from("high"),
+                user_idx : warn.user_idx,
             });
         }
 
@@ -726,6 +760,7 @@ fn set_warn_struct(warn_list: &[WarnInfo]) -> Vec<WarnData> {
                 line: warn.line,
                 warn_type: String::from("height"),
                 message: String::from("low"),
+                user_idx : warn.user_idx,
             });
         }
 
@@ -736,6 +771,7 @@ fn set_warn_struct(warn_list: &[WarnInfo]) -> Vec<WarnData> {
                 line: warn.line,
                 warn_type: String::from("weight"),
                 message: String::from("high"),
+                user_idx : warn.user_idx,
             });
         }
 
@@ -746,6 +782,7 @@ fn set_warn_struct(warn_list: &[WarnInfo]) -> Vec<WarnData> {
                 line: warn.line,
                 warn_type: String::from("location"),
                 message: String::from("missing"),
+                user_idx : warn.user_idx,
             });
         }
     }

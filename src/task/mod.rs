@@ -59,11 +59,13 @@ pub fn group_avg_task(name: &str) {
     super::data::redis::set_group_avg_data(_avg_data);
     println!("그룹데이터 평균 redis 저장 완료.");
 
+    let now_str = now.to_string();
     println!("{} 작업 완료 : {}", name, now_str);
 }
 
 use crate::data::maria::List;
 
+//라인평균 
 pub fn get_line_avg_task(name: &str) {
     let now: DateTime<Local> = Local::now();
 
