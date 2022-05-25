@@ -194,6 +194,9 @@ mod tests {
 
         let mut db = db::maria_lib::DataBase::init();
 
+        let client = reqwest::blocking::Client::new();
+
+
         let data : Vec<Obs> = db.conn
             .query_map("SELECT number, name FROM observation_list WHERE tide_level = 1 AND w_temperature = 1 AND salinity = 1 AND air_temperature = 1", |(number, name)| Obs { number, name })
             .expect("query Error occured");
@@ -201,7 +204,7 @@ mod tests {
         let key = "HefXKhyZpMNUAxmmMcpUg==";
 
         for val in data.iter() {
-            let temp = ObsRecentResp::get_data(key, &val.number).expect("error!");
+            let temp = ObsRecentResp::get_data(key, &val.number, &client).expect("error!");
             println!("{:#?}", temp);
         }
     }
@@ -300,6 +303,6 @@ mod tests {
         // 한 라인의 부이 다수가 경고를 뛰우면 실질적인 경고를 내야하는듯...
         // batch 작업 시 각 값들을 가져와서 경고만 따로 Update를 한다음
         // 일정 시간에 경고수를 체크해서, 경고를 레디스나 maria에 저장한다음, 가져온다..
-        update_warn_buoy(&mut db);
+        update_warn_buoy(&mut db.conn);
     }
 }
