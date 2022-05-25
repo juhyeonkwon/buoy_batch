@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use reqwest::header::USER_AGENT;
 
 use super::RequestLib;
 
@@ -32,7 +33,7 @@ pub struct TidalCurrentResp {
 }
 
 impl TidalCurrentResp {
-    pub fn get_data(key: &str, location: &str) -> Result<Value, Box<dyn std::error::Error>> {
+    pub fn get_data(key: &str, location: &str, client : &reqwest::blocking::Client) -> Result<Value, Box<dyn std::error::Error>> {
         //통영 해만 16LTC09
         //거제 동부 18LTC12
         let date = TidalCurrentResp::get_today();
@@ -40,7 +41,7 @@ impl TidalCurrentResp {
         let url: String =
             TidalCurrentResp::set_url_with_date("fcTidalCurrent", key, location, &date);
 
-        let resp = reqwest::blocking::get(url)?.text()?;
+        let resp = client.get(&url).header(USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36").send().expect("Error!").text()?;
 
         let value: Value = serde_json::from_str(&resp).expect("json parse error!");
 
@@ -103,7 +104,7 @@ pub struct TidalObsNowResp {
 }
 
 impl TidalObsNowResp {
-    pub fn get_data(key: &str, location: &str) -> Result<Value, Box<dyn std::error::Error>> {
+    pub fn get_data(key: &str, location: &str, client : &reqwest::blocking::Client) -> Result<Value, Box<dyn std::error::Error>> {
         //tidalBu 조류관측소
         //tidalHfRadar 해수유동 관측소 (HF로 시작)
 
@@ -111,7 +112,7 @@ impl TidalObsNowResp {
 
         let mut url: String = TidalObsNowResp::set_url_with_date("tidalBu", key, location, &date);
 
-        let resp = reqwest::blocking::get(url)?.text()?;
+        let resp = client.get(&url).header(USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36").send().expect("Error!").text()?;
 
         let value: Value = serde_json::from_str(&resp).expect("json parse error!");
 
@@ -155,7 +156,7 @@ pub struct TidalRaderNowResp {
 }
 
 impl TidalRaderNowResp {
-    pub fn get_data(key: &str, location: &str) -> Result<Value, Box<dyn std::error::Error>> {
+    pub fn get_data(key: &str, location: &str, client : &reqwest::blocking::Client) -> Result<Value, Box<dyn std::error::Error>> {
         //tidalBu 조류관측소
         //tidalHfRadar 해수유동 관측소 (HF로 시작)
 
@@ -164,7 +165,7 @@ impl TidalRaderNowResp {
         let url: String =
             TidalRaderNowResp::set_url_with_date("tidalHfRadar", key, location, &date);
 
-        let resp = reqwest::blocking::get(url)?.text()?;
+        let resp = client.get(&url).header(USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36").send().expect("Error!").text()?;
 
         let value: Value = serde_json::from_str(&resp).expect("json parse error!");
 

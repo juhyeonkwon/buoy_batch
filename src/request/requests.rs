@@ -39,10 +39,13 @@ pub fn set_data(location: &str) {
 
     let location_data = set_location(location);
 
+    //client
+    let client = reqwest::blocking::Client::new();
+
     //데이터 가져 옴
-    let recent = ObsRecentResp::get_data(&key, location_data.obs_recent).expect("error!");
-    let tidal = TidalCurrentResp::get_data(&key, location_data.tidal).expect("error!");
-    let wave_hight = ObsWaveHightResp::get_data(&key, location_data.wave_hight).expect("error!");
+    let recent = ObsRecentResp::get_data(&key, location_data.obs_recent, &client).expect("error!");
+    let tidal = TidalCurrentResp::get_data(&key, location_data.tidal, &client).expect("error!");
+    let wave_hight = ObsWaveHightResp::get_data(&key, location_data.wave_hight, &client).expect("error!");
 
     //데이터 정리
     let recent_struct: ObsRecentResp = serde_json::from_value(recent).expect("Error!");
@@ -118,8 +121,11 @@ pub fn set_all_obs_data() {
 
     let key = "HefXKhyZpMNUAxmmMcpUg==";
 
+    let client = reqwest::blocking::Client::new();
+
     for val in data.iter() {
-        let recent = match ObsRecentResp::get_data(key, &val.number) {
+        //2022-05-12 client로 보내는걸로 수정
+        let recent = match ObsRecentResp::get_data(key, &val.number, &client) {
             Ok(v) => v,
             Err(_) => {
                 println!("{}의 OBS 데이터가 존재하지 않습니다. ", val.number);
@@ -156,9 +162,11 @@ pub fn set_all_wave_height_data() {
     let mut conn = redis_lib::connect_redis();
 
     let key = "HefXKhyZpMNUAxmmMcpUg==";
+    //client
+    let client = reqwest::blocking::Client::new();
 
     for val in data.iter() {
-        let wave_hight = match ObsWaveHightResp::get_data(&key, &val.number) {
+        let wave_hight = match ObsWaveHightResp::get_data(&key, &val.number, &client) {
             Ok(v) => v,
             Err(_) => {
                 println!("{}의 파도, 파고 데이터 존재하지 않습니다.", val.number);
@@ -219,8 +227,10 @@ pub fn set_all_tidal_data() {
         let mut tidal: Value;
         let mut tidal_val: String = String::from("");
 
+        let client = reqwest::blocking::Client::new();
+
         if val.tide_velocity == 1 {
-            tidal = match TidalObsNowResp::get_data(&key, &val.number) {
+            tidal = match TidalObsNowResp::get_data(&key, &val.number, &client) {
                 Ok(v) => v,
                 Err(e) => {
                     println!(
@@ -244,7 +254,7 @@ pub fn set_all_tidal_data() {
             )
             .expect("parse Error!");
         } else if val.tide_velocity == 2 {
-            tidal = match TidalRaderNowResp::get_data(&key, &val.number) {
+            tidal = match TidalRaderNowResp::get_data(&key, &val.number, &client) {
                 Ok(v) => v,
                 Err(e) => {
                     println!(

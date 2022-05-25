@@ -29,32 +29,34 @@ mod tests {
     use crate::request::model::obs_wave_hight::ObsWaveHightResp;
     use crate::request::model::tidal_current::TidalCurrentResp;
 
-    // #[test]
-    // fn curl_test() -> Result<(), Box<dyn std::error::Error>> {
-    //     //let resp = reqwest::get("https://www.khoa.go.kr/api/oceangrid/tideObsRecent/search.do?ServiceKey=HefXKhyZpMNUAxmmMcpUg==&ObsCode=DT_0029&ResultType=json");
+    #[test]
+    fn curl_test() -> Result<(), Box<dyn std::error::Error>> {
+        //let resp = reqwest::get("https://www.khoa.go.kr/api/oceangrid/tideObsRecent/search.do?ServiceKey=HefXKhyZpMNUAxmmMcpUg==&ObsCode=DT_0029&ResultType=json");
 
-    //     let key = "HefXKhyZpMNUAxmmMcpUg==";
+        let key = "HefXKhyZpMNUAxmmMcpUg==";
 
-    //     let location = "DT_0029";
+        let location = "DT_0029";
 
-    //     let _data = ObsRecentResp::get_data(key, location).expect("error!");
-    //     let data2 = ObsWaveHightResp::get_data(key, "KG_0025").expect("error!");
-    //     let data3 = TidalCurrentResp::get_data(key, "16LTC09").expect("error!");
+        let client = reqwest::blocking::Client::new();
 
-    //     let sib: ObsWaveHightResp = serde_json::from_value(data2).expect("Error!");
+        let _data = ObsRecentResp::get_data(key, location, &client).expect("error!");
+        let data2 = ObsWaveHightResp::get_data(key, "KG_0025", &client).expect("error!");
+        let data3 = TidalCurrentResp::get_data(key, "16LTC09", &client).expect("error!");
 
-    //     let _js = serde_json::to_value(&sib.result.data[sib.result.data.len() - 1])
-    //         .expect("parse Error!");
+        let sib: ObsWaveHightResp = serde_json::from_value(data2).expect("Error!");
 
-    //     // println!("{:#?}", data);
-    //     // println!("{:#?}", js);
-    //     // println!("{:#?}", data3);
+        let _js = serde_json::to_value(&sib.result.data[sib.result.data.len() - 1])
+            .expect("parse Error!");
 
-    //     let tidal: TidalCurrentResp = serde_json::from_value(data3).expect("Error!");
-    //     let _val: Value = tidal.get_close_data();
+        // println!("{:#?}", data);
+        // println!("{:#?}", js);
+        // println!("{:#?}", data3);
 
-    //     Ok(())
-    // }
+        let tidal: TidalCurrentResp = serde_json::from_value(data3).expect("Error!");
+        let _val: Value = tidal.get_close_data();
+
+        Ok(())
+    }
 
     use serde_json::json;
 
@@ -71,7 +73,6 @@ mod tests {
         println!("{:#?}", a);
     }
 
-    use crate::request::requests;
     use dotenv::dotenv;
 
     // #[test]
@@ -108,7 +109,8 @@ mod tests {
     #[test]
     fn tidal_test() {
         let key = "HefXKhyZpMNUAxmmMcpUg==";
+        let client = reqwest::blocking::Client::new();
 
-        let _val: Value = TidalRaderNowResp::get_data(key, "HF_0064").expect("error!");
+        let _val: Value = TidalRaderNowResp::get_data(key, "HF_0064", &client).expect("error!");
     }
 }

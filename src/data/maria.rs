@@ -1,4 +1,4 @@
-use crate::db::maria_lib::{Buoy, DataBase};
+use crate::db::maria_lib::{Buoy};
 use mysql::prelude::*;
 use mysql::*;
 use serde::{Deserialize, Serialize};
@@ -47,12 +47,12 @@ struct BuoyModel {
     pub weight: f32,
 }
 
-pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
-    let mut db = DataBase::init();
-    let mut db2 = DataBase::init();
+pub fn insert(data: &[Buoy], pool_mutex : &std::sync::Arc<std::sync::Mutex<mysql::Pool>>) -> HashMap<String, i32> {
+    let mut pool = pool_mutex.lock().unwrap();
+    let mut conn = pool.get_conn().unwrap();
     //Buoy_Model에서 모델의 정보들을 가져옵니다.
-    let row = db
-        .conn
+    let row = 
+        conn
         .query_map(
             "SELECT model, group_id, line, latitude, longitude FROM buoy_model ORDER BY model_idx",
             |(model, group_id, line, latitude, longitude)| Modelinfo {
@@ -71,9 +71,9 @@ pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
         hashmap.insert(String::from(&data.model), data.group_id);
     }
 
-    let stmt = db.conn.prep("INSERT INTO buoy_data(model, group_id, time, latitude, longitude, water_temp, salinity, height, weight) VALUES (:model, :gruop_id, :time, :latitude, :longitude, :water_temp, :salinity, :height, :weight)").expect("error");
+    let stmt = conn.prep("INSERT INTO buoy_data(model, group_id, time, latitude, longitude, water_temp, salinity, height, weight) VALUES (:model, :gruop_id, :time, :latitude, :longitude, :water_temp, :salinity, :height, :weight)").expect("error");
 
-    db.conn
+    conn
         .exec_batch(
             stmt,
             data.iter().map(|buoy| {
@@ -83,7 +83,7 @@ pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
                       Some(v) => v,
                       None => {
                         hashmap.insert(String::from(&buoy.model), 0);
-                        create_buoy_model(&buoy.model, &mut db2);
+                        create_buoy_model(&buoy.model, &mut pool.get_conn().unwrap());
                         &0
                       }
                   },
@@ -100,17 +100,17 @@ pub fn insert(data: &[Buoy]) -> HashMap<String, i32> {
         .expect("error occured");
 
     //buoy의 각 값들을 최신값으로 업데이트
-    update_buoy(&mut db, data);
+    update_buoy(&mut pool.get_conn().unwrap(), data);
 
     //최신값을 토대로 경고값을 설정합니다
-    update_warn_buoy(&mut db);
+    update_warn_buoy(&mut pool.get_conn().unwrap());
 
     hashmap
 }
 
 //만약 model에 없는 새로운 모델이 값으로 들어왔다면 해당 모델을 buoy_model에 Insert합니다.
-pub fn create_buoy_model(model: &String, db: &mut DataBase) {
-    let stmt = db.conn.prep("INSERT INTO 
+pub fn create_buoy_model(model: &String, conn: &mut PooledConn) {
+    let stmt = conn.prep("INSERT INTO 
                   buoy_model (model, 
                                 group_id, 
                                 line, 
@@ -124,16 +124,16 @@ pub fn create_buoy_model(model: &String, db: &mut DataBase) {
                             ) 
                                 VALUES (:model, 0, 0, 0, 0, 0, 0, 0, 0, 0)").expect("Error!");
     
-    db.conn.exec_drop(stmt, params! {
+    conn.exec_drop(stmt, params! {
         "model" => model 
     }).expect("Error!");
     
 }
 
 //buoy의 각 값들을 최신값으로 업데이트 합니다.
-pub fn update_buoy(db: &mut DataBase, data: &[Buoy]) {
-    let stmt = db
-        .conn
+pub fn update_buoy(conn: &mut PooledConn, data: &[Buoy]) {
+    let stmt = 
+        conn
         .prep(
             "UPDATE buoy_model 
                     SET latitude = :latitude, 
@@ -146,7 +146,7 @@ pub fn update_buoy(db: &mut DataBase, data: &[Buoy]) {
         )
         .expect("stmt error");
 
-    db.conn
+    conn
         .exec_batch(
             stmt,
             data.iter().map(|buoy| {
@@ -166,7 +166,7 @@ pub fn update_buoy(db: &mut DataBase, data: &[Buoy]) {
     println!("buoy_model update 완료");
 
     //그룹의 평균값을 저장
-    update_group_avg(db);
+    update_group_avg(conn);
 }
 
 
@@ -176,18 +176,18 @@ struct UserId{
 }
 
 //각 최신값들을 토대로 그룹들의 현재 평균값을 저장합니다.
-pub fn update_group_avg(db: &mut DataBase) {
+pub fn update_group_avg(conn: &mut PooledConn) {
     
     //1. 유저 id를 가져옵니다
 
-    let user_idx : Vec<UserId> = db.conn.query_map("SELECT idx from users", |idx| {
+    let user_idx : Vec<UserId> = conn.query_map("SELECT idx from users", |idx| {
         UserId { idx }
     }).expect("DB ERROR!");
 
 
     //유저별 그룹의 평균값 저장
     for idx in user_idx.iter() {
-        let stmt = db.conn.prep("SELECT group_id, 
+        let stmt = conn.prep("SELECT group_id, 
                                     AVG(latitude) AS group_latitude, 
                                     AVG(longitude) AS group_longitude, 
                                     AVG(water_temp) AS group_water_temp, 
@@ -195,8 +195,8 @@ pub fn update_group_avg(db: &mut DataBase) {
                                     AVG(height) AS group_height, 
                                     AVG(weight) AS group_weight
                                 FROM buoy_model WHERE user_idx = :idx AND group_id > 0 GROUP BY group_id").expect("Err");
-        let _row = db
-        .conn
+        let _row = 
+        conn
         .exec_map(
             stmt, params!{"idx" => idx.idx},
             |(
@@ -219,8 +219,8 @@ pub fn update_group_avg(db: &mut DataBase) {
         )
         .expect("error!");
 
-        let update_stmt = db
-            .conn
+        let update_stmt = 
+            conn
             .prep(
                 r"UPDATE buoy_group
                             SET                 
@@ -235,7 +235,7 @@ pub fn update_group_avg(db: &mut DataBase) {
             )
             .expect("Error on STMT");
 
-        db.conn
+        conn
             .exec_batch(
                 update_stmt,
                 _row.iter().map(|group| {
@@ -257,13 +257,15 @@ pub fn update_group_avg(db: &mut DataBase) {
 }
 
 //전날의 평균을 계산하기위해 하루치의 데이터들을 가져옵니다.
-pub fn get_daily_data() -> Vec<Insertbuoy> {
+pub fn get_daily_data(pool : &std::sync::Arc<std::sync::Mutex<mysql::Pool>>) -> Vec<Insertbuoy> {
     let now: DateTime<Local> = Local::now();
 
     let start_date = (now.date() - Duration::days(1)).to_string();
     let end_date = now.to_string();
 
-    let mut db = DataBase::init();
+    // let mut db = DataBase::init();
+
+    let mut conn = pool.lock().unwrap().get_conn().unwrap();
 
     let query = r"
         SELECT group_id, model, CAST(time AS CHAR) as time, latitude, longitude, water_temp, salinity, height, weight FROM buoy_data 
@@ -272,10 +274,10 @@ pub fn get_daily_data() -> Vec<Insertbuoy> {
         buoy_data.time <= :end_date;
     ";
 
-    let stmt = db.conn.prep(query).expect("stmt error");
+    let stmt = conn.prep(query).expect("stmt error");
 
-    let row = db
-        .conn
+    let row = 
+        conn
         .exec_map(
             stmt,
             params! {
@@ -316,11 +318,11 @@ pub struct Group {
     pub user_idx : i32,
 }
 
-pub fn get_group_avg() -> Vec<Group> {
-    let mut db = DataBase::init();
+pub fn get_group_avg(pool_mutex : &std::sync::Arc<std::sync::Mutex<mysql::Pool>>) -> Vec<Group> {
+    let mut conn = pool_mutex.lock().unwrap().get_conn().unwrap();
 
-    let data: Vec<Group> = db
-        .conn
+    let data: Vec<Group> = 
+        conn
         .query_map(
             "SELECT group_id,
             group_name,
@@ -376,9 +378,10 @@ pub struct List {
     pub group_name: String,
 }
 
-pub fn get_line_avg(row: &Vec<List>, db: &mut DataBase) -> Value {
-    let stmt = db
-        .conn
+pub fn get_line_avg(row: &Vec<List>, pool_mutex : &std::sync::Arc<std::sync::Mutex<mysql::Pool>>) -> Value {
+    let mut conn = pool_mutex.lock().unwrap().get_conn().unwrap();
+    let stmt = 
+        conn
         .prep(
             "SELECT b.group_id, b.group_name, 
                 line,
@@ -400,8 +403,8 @@ pub fn get_line_avg(row: &Vec<List>, db: &mut DataBase) -> Value {
     let mut json: Value = json!({});
 
     for value in row.iter() {
-        let data: Vec<Line> = db
-            .conn
+        let data: Vec<Line> = 
+            conn
             .exec_map(
                 &stmt,
                 params! {
@@ -459,8 +462,8 @@ weight: f32,
 */
 
 //각 스마트 부표별 경고여부를 설정합니다.
-pub fn update_warn_buoy(db: &mut DataBase) {
-    let buoy_model = get_buoy_model(db);
+pub fn update_warn_buoy(conn: &mut PooledConn) {
+    let buoy_model = get_buoy_model(conn);
     // let mut warn = get_buoy_warn(db);
 
     let mut warn: Vec<Warn> = Vec::new();
@@ -490,8 +493,8 @@ pub fn update_warn_buoy(db: &mut DataBase) {
         warn.push(temp);
     }
 
-    let stmt = db
-        .conn
+    let stmt = 
+        conn
         .prep(
             "UPDATE buoy_model 
                                 SET 
@@ -506,7 +509,7 @@ pub fn update_warn_buoy(db: &mut DataBase) {
         )
         .expect("Prep Error");
 
-    db.conn
+    conn
         .exec_batch(
             stmt,
             warn.iter().map(|warn| {
@@ -524,9 +527,9 @@ pub fn update_warn_buoy(db: &mut DataBase) {
         .expect("error occured");
 }
 
-fn get_buoy_model(db: &mut DataBase) -> Vec<BuoyModel> {
-    let buoy: Vec<BuoyModel> = db
-        .conn
+fn get_buoy_model(conn: &mut PooledConn) -> Vec<BuoyModel> {
+    let buoy: Vec<BuoyModel> = 
+        conn
         .query_map(
             "SELECT 
             model_idx,
@@ -624,12 +627,13 @@ pub struct GroupList {
     pub group_name: String,
 }
 
-pub fn get_warn_list(db: &mut DataBase) -> Vec<WarnData> {
+pub fn get_warn_list(pool_mutex : &std::sync::Arc<std::sync::Mutex<mysql::Pool>>) -> Vec<WarnData> {
+    let mut conn = pool_mutex.lock().unwrap().get_conn().unwrap();
     //배열 저장
     let mut vector: Vec<WarnData> = Vec::new();
 
-    let group_list: Vec<GroupList> = db
-        .conn
+    let group_list: Vec<GroupList> = 
+        conn
         .query_map(
             "SELECT group_id, group_name from buoy_group",
             |(group_id, group_name)| GroupList {
@@ -640,8 +644,8 @@ pub fn get_warn_list(db: &mut DataBase) -> Vec<WarnData> {
         .expect("db Error!");
 
     for list in group_list.iter() {
-        let stmt = db
-            .conn
+        let stmt = 
+            conn
             .prep(
                 "SELECT a.group_id, b.group_name,
                                         a.line,
@@ -660,8 +664,8 @@ pub fn get_warn_list(db: &mut DataBase) -> Vec<WarnData> {
             )
             .expect("STMT Error");
 
-        let temp: Vec<WarnInfo> = db
-            .conn
+        let temp: Vec<WarnInfo> = 
+            conn
             .exec_map(
                 stmt,
                 params! {
